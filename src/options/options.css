@@ -1,0 +1,35 @@
+html,
+body {
+  font-size: 100%;
+  background-color: #EEE;
+}
+
+#options {
+  text-align: justify;
+  border-radius: 5px;
+  position: relative;
+  width: 500px;
+  margin: 0px auto;
+  background-color: white;
+  border: 1px solid #D2DBED;
+  padding-left: 10px;
+  padding-right: 10px;
+  height: 240px;
+  -webkit-box-shadow: #888 2px 2px 2px;
+}
+
+.accept {
+  background-color: green;
+  float: right;
+  margin-bottom: 10px;
+  margin-right: 5px;
+  color: black;
+}
+
+.skip {
+  background-color: red;
+  float: right;
+  margin-bottom: 10px;
+  margin-right: 5px;
+  color: black;
+}

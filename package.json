@@ -1,0 +1,30 @@
+{
+  "name": "biblio-glutton-extension",
+  "version": "0.0.1",
+  "description": "A web extension providing contextual bibliographical services in the browser pages",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "web-ext build -s ./src -a ./web-ext-artifacts",
+    "run": "web-ext run -s ./src -a ./web-ext-artifacts --browser-console --start-url https://en.wikipedia.org/wiki/Superfluid_helium-4 --start-url 'https://scholar.google.fr/scholar?q=elsevier+brain&btnG=&hl=fr&as_sdt=0%2C5&as_ylo=2001&as_yhi=2001'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kermitt2/biblio-glutton-extension.git"
+  },
+  "keywords": [
+    "science-miner",
+    "open access",
+    "web-extension"
+  ],
+  "author": "science-miner",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/kermitt2/biblio-glutton-extension/issues"
+  },
+  "homepage": "https://github.com/kermitt2/biblio-glutton-extension#readme",
+  "dependencies": {},
+  "devDependencies": {
+    "web-ext": "^1.10.1"
+  }
+}
