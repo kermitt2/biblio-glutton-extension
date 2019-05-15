@@ -47,7 +47,7 @@ const forbidenElements = ['applet',
                           'rect'];
 
 config = {
-  gluttonBaseURL: 'cloud.science-miner.com/glutton',
+  gluttonBaseURL: 'cloud.science-miner.com/glutton/service',
   maxPageLinks: 2500,
   mustDebug   : false
 };
@@ -55,7 +55,7 @@ config = {
 GluttonLinkInserter = {
   // OpenURL static info
   openUrlVersion: 'Z39.88-2004',
-  openURLPrefix : 'http://cloud.science-miner.com/glutton?',
+  openURLPrefix : 'http://cloud.science-miner.com/glutton/service/',
 
   // DOI pattern
   doiPattern                 : /\/\/((dx\.)?doi\.org|doi\.acm\.org|dx\.crossref\.org).*\/(10\..*(\/|%2(F|f)).*)/,
@@ -319,7 +319,7 @@ GluttonLinkInserter = {
       return;
     }
     var doiString = matchInfo[this.doiGroup];
-    var gluttonUrl  = 'rft_id=info:doi/' + doiString;
+    var gluttonUrl  = 'oa?doi=' + doiString;
     var newLink   = this.buildButton(gluttonUrl);
     link.parentNode.insertBefore(newLink, link.nextSibling);
     link.setAttribute('name', 'GluttonVisited');
@@ -337,7 +337,7 @@ GluttonLinkInserter = {
       return;
     }
     var doiString = matchInfo[this.doiGroup];
-    var gluttonUrl  = 'rft_id=info:doi/' + doiString;
+    var gluttonUrl  = 'oa?doi=' + doiString;
     var newLink   = this.buildButton(gluttonUrl);
     newLink.setAttribute('style', 'visibility:visible;');
     link.parentNode.insertBefore(newLink, link.nextSibling);
@@ -358,7 +358,7 @@ GluttonLinkInserter = {
   createPIILink: function(href, link) {
     var matches = href.match(this.regexPIIPattern);
     if (matches && (matches.length > 0)) {
-      var gluttonUrl = 'rft_id=info:' + matches[0] + '&rft.genre=article,chapter,bookitem&svc.fulltext=yes';
+      var gluttonUrl = 'oa?pii=' + matches[0];
       var newLink  = this.buildButton(gluttonUrl);
       link.parentNode.insertBefore(newLink, link.nextSibling);
       link.setAttribute('name', 'GluttonVisited');
@@ -372,6 +372,7 @@ GluttonLinkInserter = {
     link.name        = 'ISTEXLink';
     link.className   = 'istex-link';
     link.target      = '_blank';
+    link.rel         = 'noopener noreferrer';
     //link.setAttribute('name', 'GluttonVisited');
   },
 
@@ -403,7 +404,7 @@ GluttonLinkInserter = {
    * @param {Object} href
    */
   buildButton         : function(href) {
-    debug('making link: ' + this.openURLPrefix + href + '&noredirect&sid=glutton-browser-addon');
+    debug('making link: ' + this.openURLPrefix + href + '&sid=glutton-browser-addon');
 
     var span = document.createElement('span');
     this.makeChild(href, document, span);
@@ -413,12 +414,14 @@ GluttonLinkInserter = {
   createLink: function(resourceUrl) {
     // set the added link, this will avoid an extra call to the OpenURL API and fix the access url
     var a         = document.createElement('a');
-    a.href        = resourceUrl.replace('/original', '/pdf')
+    //a.href        = resourceUrl.replace('/original', '/pdf')
+    a.href        = resourceUrl;
     a.target      = '_blank';
     a.alt         = 'Glutton';
     a.name        = 'GluttonLink';
     a.className   = 'glutton-link';
     a.textContent = 'Glutton';
+    a.rel         = 'noopener noreferrer';
 
     return a;
   },
@@ -446,19 +449,7 @@ GluttonLinkInserter = {
 
     var sid = this.parseQuery(href).sid;
 
-    /*if ((resourceUrl = localStorage.getItem(key))) {
-      if (resourceUrl === NOT_AVAILABLE) {
-        parent = null;
-        return;
-      }
-      parent
-        .appendChild(
-          GluttonLinkInserter.createLink(resourceUrl)
-        );
-      return;
-    }*/
-
-    var requestUrl = GluttonLinkInserter.openURLPrefix + href + '&noredirect'
+    var requestUrl = GluttonLinkInserter.openURLPrefix + href 
     ;
 
     $.ajax(
@@ -470,7 +461,7 @@ GluttonLinkInserter = {
         success : function(data) {
           parent
           && parent.appendChild(
-            GluttonLinkInserter.createLink(data.resourceUrl)
+            GluttonLinkInserter.createLink(data)
           );
         },
         error   : function(jqXHR, textStatus, errorThrown) {
@@ -486,14 +477,6 @@ GluttonLinkInserter = {
           // Todo fix the async behavior using callback style for element creation
           parent && parent.parentNode && parent.parentNode.removeChild(parent);
         },
-        /*complete: function(jqXHR) {
-          if (~[200, 300, 404].indexOf(jqXHR.status)) {
-            if (!localStorage.getLastRefresh()) {
-              localStorage.setLastRefresh();
-            }
-            localStorage.setItemOrClear(key, jqXHR.responseJSON.resourceUrl || NOT_AVAILABLE);
-          }
-        }*/
       }
     );
   },
@@ -521,38 +504,6 @@ GluttonLinkInserter = {
 
 };
 
-// We need to remove trace of the old way refresh Timestamp
-/*if (localStorage.getItem('last-refesh')) {
-  localStorage.clear();
-}
-
-if (!localStorage.getLastRefresh()) {
-  setTimeout(GluttonLinkInserter.onDOMContentLoaded, 0);
-} else {
-  info('Check data freshness');
-  $.ajax(
-    {
-      url     : 'https://api.istex.fr/properties',
-      timeout : 5000,
-      tryCount: 0,
-      maxRetry: 1,
-      success : function(data) {
-        if (data.corpus.lastUpdate > localStorage.getLastRefresh()) {
-          localStorage.refresh();
-        }
-        GluttonLinkInserter.onDOMContentLoaded();
-      },
-      error   : function(jqXHR, textStatus, errorThrown) {
-        error(textStatus, errorThrown);
-        if (textStatus === 'timeout' && this.tryCount < this.maxRetry) {
-          info('Retry: ', this.url);
-          this.tryCount++;
-          return $.ajax(this);
-        }
-        GluttonLinkInserter.onDOMContentLoaded();
-      }
-    });
-}
-*/
+setTimeout(GluttonLinkInserter.onDOMContentLoaded, 0);
 
 

@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "web-ext build -s ./src -a ./web-ext-artifacts",
-    "run": "web-ext run -s ./src -a ./web-ext-artifacts --browser-console --start-url https://en.wikipedia.org/wiki/Superfluid_helium-4 --start-url 'https://scholar.google.fr/scholar?q=elsevier+brain&btnG=&hl=fr&as_sdt=0%2C5&as_ylo=2001&as_yhi=2001'"
+    "run": "web-ext run -s ./src -a ./web-ext-artifacts --browser-console --start-url https://en.wikipedia.org/wiki/Superfluid_helium-4"
   },
   "repository": {
     "type": "git",

@@ -1,0 +1,39 @@
+{
+  "applications": {
+    "gecko": {
+      "id": "glutton@science-miner.com",
+      "strict_min_version": "49.0a2",
+      "update_url": "https://science-miner.com/download/updates.json"
+    }
+  },
+  "manifest_version": 2,
+  "name": "biblio-glutton",
+  "version": "0.1.0",
+  "description": "An add-on for identifying Open Access resources in the browser pages",
+  "icons": {
+    "16": "icons/science-miner-16.png",
+    "48": "icons/science-miner-48.png"
+  },
+  "permissions": [
+    "<all_urls>",
+    "tabs",
+    "webNavigation"
+  ],
+  "background": {
+    "scripts": ["background/postInstall.js", "background/tabBootstrap.js"]
+  },
+  "options_ui": {
+    "page": "options/options.html"
+  },
+  "content_scripts": [{
+    "matches": [
+      "<all_urls>"
+    ],
+    "js": [
+      "content_scripts/tabBootstrap.js"
+    ],
+    "css": [
+      "content_scripts/main.css"
+    ]
+  }]
+}
