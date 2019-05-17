@@ -461,7 +461,7 @@ GluttonLinkInserter = {
         success : function(data) {
           parent
           && parent.appendChild(
-            GluttonLinkInserter.createLink(data)
+            GluttonLinkInserter.createLink(data.oaLink)
           );
         },
         error   : function(jqXHR, textStatus, errorThrown) {
