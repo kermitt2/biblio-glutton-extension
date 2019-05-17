@@ -213,22 +213,25 @@ GluttonLinkInserter = {
 
       // We have found an open url link:
       if (flags === this.flags.HAS_OPEN_URL) {
-        // OpenURl
-        this.createOpenUrlLink(href, link);
+        // OpenURL (deactivated for the moment, we need to map the OpenURL to a valid Glutton query)
+        //this.createOpenUrlLink(href, link);
       }
       else if (flags === this.flags.DOI_ADDRESS) {
         // doi
         this.createDoiLink(href, link);
       }
       else if (flags === this.flags.GOOGLE_SCHOLAR_OPENURL) {
-        this.createGoogleScholarLink(href, link);
+        // (deactivated for the moment, in theory we would need to a google scholar library config with 
+        // Unpaywall resources and have the extension selecting this config automatically atextensiuon install,
+        // similarly as how we did with ISTEX)
+        //this.createGoogleScholarLink(href, link);
       }
       else if (flags === this.flags.PUBMED_ADDRESS) {
         // PubMed ID
         this.createPubmedLink(href, link);
       }
       else if (flags === this.flags.HAS_PII) {
-        // Publisher Item Identifier
+        // Publisher Item Identifier, it's only for Elsevier ScienceDirect result page
         this.createPIILink(href, link);
       } else if (flags === this.flags.SCOPUS_DOI) {
         // scopus external publisher link
@@ -237,7 +240,8 @@ GluttonLinkInserter = {
 
     }
 
-    this.createSpanBasedLinks(domNode);
+    // COinS (deactivated for the moment, we need to map the OpenURL to a valid Glutton query)
+    //this.createSpanBasedLinks(domNode);
   },
 
   analyzeLink: function(link) {
@@ -310,7 +314,7 @@ GluttonLinkInserter = {
     if (!matchInfo) return;
     // the last group should be the parameters:
     var child = this.buildButton(matchInfo[matchInfo.length - 1]);
-    link.parentNode.replaceChild(child, link);
+    //link.parentNode.replaceChild(child, link);
   },
 
   createDoiLink: function(href, link) {
