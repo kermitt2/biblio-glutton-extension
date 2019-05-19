@@ -5,7 +5,7 @@ var config,
     GluttonLinkInserter,
     NOT_AVAILABLE = 'NA'
 ;
-const forbidenElements = ['applet',
+const forbidenElements = ['applet', 
                           'area',
                           'audio',
                           'br',
@@ -54,7 +54,7 @@ config = {
 
 GluttonLinkInserter = {
   // OpenURL static info
-  openUrlVersion: 'Z39.88-2004',
+  //openUrlVersion: 'Z39.88-2004',
   openURLPrefix : 'http://cloud.science-miner.com/glutton/service/',
 
   // DOI pattern
@@ -187,6 +187,73 @@ GluttonLinkInserter = {
     return prefix;
   },
 
+  // map OpenURL metadata to Glutton query arguments, this will be applied to links
+  // identified as OpenURL or COinS
+
+  // ;rft.jtitle=Physical+Review&amp;rft.atitle=Helium+and+Hydrogen+of+Mass+3&amp;rft.volume=56
+  // &amp;rft.issue=6&amp;rft.pages=613&amp;rft.date=1939&amp;rft_id=info%3Adoi%2F10.1103%2FPhysRev.56.613
+  // &amp;rft_id=info%3Abibcode%2F1939PhRv...56..613A&amp;rft.aulast=Alvarez&amp;rft.aufirst=Luis
+  // &amp;rft.au=Cornog%2C+Robert&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3AHelium-3
+  mapOpenURLToGlutton(link) {
+    log('mapOpenURLToGlutton')
+    log(link)
+
+    var newLink = "";
+    var atitle = link.getAttribute('rft.atitle');
+    if (atitle) {
+      newLink += '&atitle='+atitle;
+    }
+    var jtitle = link.getAttribute('rft.jtitle');
+    if (jtitle) {
+      newLink += '&jtitle='+jtitle;
+    }
+    var aulast = link.getAttribute('rft.aulast');
+    if (aulast) {
+      newLink += '&firstAuthor='+aulast;
+    }
+    var volume = link.getAttribute('rft.volume');
+    if (volume) {
+      newLink += '&volume='+volume;
+    }
+    var firstPage = link.getAttribute('rft.pages');
+    // might be whole range of pages, and we want only first page
+    if (firstPage) {
+      newLink += '&firstPage='+firstPage;
+    }
+
+    // note: not sure what happens when we have several identifiers
+    var identifier = link.getAttribute('rft_id');
+    if (identifier) {
+      if (identifier.indexOf('info:doi') != -1) {
+        doi = identifier.replace('info:doi/', '');
+      }
+      if (identifier.indexOf('info:pmid') != -1) {
+        pmid = identifier.replace('info:pmid/', '');
+      }
+      if (identifier.indexOf('info:pii') != -1) {
+        pii = identifier.replace('info:pii/', '');
+      }
+    }
+
+    if (doi) {
+      newLink += '&doi='+doi;
+    }
+    if (pmid) {
+      newLink += '&pmid='+pmid;
+    }
+    if (pii) {
+      newLink += '&pii='+pii;
+    }
+    
+    log('new link:' + newLink);
+
+    if (newLink && (newLink.length > 0) && (newLink[0] == '&')) {
+      newLink = newLink.substring(1);
+    }
+
+    return newLink;
+  },
+
   findAndReplaceLinks: function(domNode) {
     // Only process valid domNodes:
     if (!domNode || !domNode.getElementsByTagName) return;
@@ -213,8 +280,10 @@ GluttonLinkInserter = {
 
       // We have found an open url link:
       if (flags === this.flags.HAS_OPEN_URL) {
+        log('We have found an open url link');
         // OpenURL (deactivated for the moment, we need to map the OpenURL to a valid Glutton query)
-        //this.createOpenUrlLink(href, link);
+        //var newLink = mapOpenURLToGlutton(link);
+        this.createOpenUrlLink(href, link);
       }
       else if (flags === this.flags.DOI_ADDRESS) {
         // doi
@@ -393,7 +462,8 @@ GluttonLinkInserter = {
       var name    = span.getAttribute('name') === null ? '' : span.getAttribute('name');
 
       if ((name !== 'GluttonVisited') && (clazzes.match(/Z3988/i) !== null)) {
-        query += '&url_ver=' + GluttonLinkInserter.openUrlVersion;
+        //query += '&url_ver=' + GluttonLinkInserter.openUrlVersion;
+        //newLink = this.mapOpenURLToGlutton(span)
         var child = this.buildButton(query);
         span.appendChild(child);
         span.setAttribute('name', 'GluttonVisited');
@@ -402,6 +472,7 @@ GluttonLinkInserter = {
 
     }
   },
+
   /**
    * Make the Glutton button.
    *
