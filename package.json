@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "web-ext build -s ./src -a ./web-ext-artifacts",
-    "run": "web-ext run -s ./src -a ./web-ext-artifacts --browser-console --start-url https://en.wikipedia.org/wiki/Superfluid_helium-4"
+    "run": "web-ext run -s ./src -a ./web-ext-artifacts --browser-console --start-url https://en.wikipedia.org/wiki/Radioactive_decay"
   },
   "repository": {
     "type": "git",
@@ -23,7 +23,10 @@
     "url": "https://github.com/kermitt2/biblio-glutton-extension/issues"
   },
   "homepage": "https://github.com/kermitt2/biblio-glutton-extension#readme",
-  "dependencies": {},
+  "dependencies": {
+    "cryptiles": ">=4.1.2",
+    "hoek": ">=4.2.1"
+  },
   "devDependencies": {
     "web-ext": "^1.10.1"
   }
