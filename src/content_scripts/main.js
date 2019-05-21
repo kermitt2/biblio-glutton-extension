@@ -55,7 +55,7 @@ config = {
 GluttonLinkInserter = {
   // OpenURL static info
   //openUrlVersion: 'Z39.88-2004',
-  openURLPrefix : 'http://cloud.science-miner.com/glutton/service/',
+  gluttonPrefix : 'http://cloud.science-miner.com/glutton/service/',
 
   // DOI pattern
   doiPattern                 : /\/\/((dx\.)?doi\.org|doi\.acm\.org|dx\.crossref\.org).*\/(10\..*(\/|%2(F|f)).*)/,
@@ -188,50 +188,57 @@ GluttonLinkInserter = {
   },
 
   // map OpenURL metadata to Glutton query arguments, this will be applied to links
-  // identified as OpenURL or COinS
+  // identified as OpenURL or COinS. Parameter url is an OpenURL.
 
   // ;rft.jtitle=Physical+Review&amp;rft.atitle=Helium+and+Hydrogen+of+Mass+3&amp;rft.volume=56
   // &amp;rft.issue=6&amp;rft.pages=613&amp;rft.date=1939&amp;rft_id=info%3Adoi%2F10.1103%2FPhysRev.56.613
   // &amp;rft_id=info%3Abibcode%2F1939PhRv...56..613A&amp;rft.aulast=Alvarez&amp;rft.aufirst=Luis
   // &amp;rft.au=Cornog%2C+Robert&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3AHelium-3
-  mapOpenURLToGlutton(link) {
-    log('mapOpenURLToGlutton')
-    log(link)
+  mapOpenURLToGlutton(url) {
+    url = decodeURIComponent((url+'').replace(/\+/g, '%20'));
+    var params = this.getAllUrlParams(url)
 
     var newLink = "";
-    var atitle = link.getAttribute('rft.atitle');
+    var atitle = params['rft.atitle'];
     if (atitle) {
       newLink += '&atitle='+atitle;
     }
-    var jtitle = link.getAttribute('rft.jtitle');
+    var jtitle = params['rft.jtitle'];
     if (jtitle) {
       newLink += '&jtitle='+jtitle;
     }
-    var aulast = link.getAttribute('rft.aulast');
+    var aulast = params['rft.aulast'];
     if (aulast) {
       newLink += '&firstAuthor='+aulast;
     }
-    var volume = link.getAttribute('rft.volume');
+    var volume = params['rft.volume'];
     if (volume) {
       newLink += '&volume='+volume;
     }
-    var firstPage = link.getAttribute('rft.pages');
+    var firstPage = params['rft.pages'];
     // might be whole range of pages, and we want only first page
     if (firstPage) {
       newLink += '&firstPage='+firstPage;
     }
 
     // note: not sure what happens when we have several identifiers
-    var identifier = link.getAttribute('rft_id');
+    var identifier = params['rft_id'];
+    var doi;
+    var pmid;
+    var pii;
     if (identifier) {
-      if (identifier.indexOf('info:doi') != -1) {
-        doi = identifier.replace('info:doi/', '');
-      }
-      if (identifier.indexOf('info:pmid') != -1) {
-        pmid = identifier.replace('info:pmid/', '');
-      }
-      if (identifier.indexOf('info:pii') != -1) {
-        pii = identifier.replace('info:pii/', '');
+      for(var i = 0; i < identifier.length; i++) {
+        if (!identifier[i])
+          continue;
+        if (identifier[i].indexOf('info:doi') != -1) {
+          doi = identifier[i].replace('info:doi/', '');
+        }
+        if (identifier[i].indexOf('info:pmid') != -1) {
+          pmid = identifier[i].replace('info:pmid/', '');
+        }
+        if (identifier[i].indexOf('info:pii') != -1) {
+          pii = identifier[i].replace('info:pii/', '');
+        }
       }
     }
 
@@ -244,12 +251,11 @@ GluttonLinkInserter = {
     if (pii) {
       newLink += '&pii='+pii;
     }
-    
-    log('new link:' + newLink);
 
     if (newLink && (newLink.length > 0) && (newLink[0] == '&')) {
       newLink = newLink.substring(1);
     }
+    newLink = 'lookup?' + newLink
 
     return newLink;
   },
@@ -283,7 +289,7 @@ GluttonLinkInserter = {
         log('We have found an open url link');
         // OpenURL (deactivated for the moment, we need to map the OpenURL to a valid Glutton query)
         //var newLink = mapOpenURLToGlutton(link);
-        this.createOpenUrlLink(href, link);
+        //this.createOpenUrlLink(href, link);
       }
       else if (flags === this.flags.DOI_ADDRESS) {
         // doi
@@ -310,7 +316,7 @@ GluttonLinkInserter = {
     }
 
     // COinS (deactivated for the moment, we need to map the OpenURL to a valid Glutton query)
-    //this.createSpanBasedLinks(domNode);
+    this.createSpanBasedLinks(domNode);
   },
 
   analyzeLink: function(link) {
@@ -463,8 +469,8 @@ GluttonLinkInserter = {
 
       if ((name !== 'GluttonVisited') && (clazzes.match(/Z3988/i) !== null)) {
         //query += '&url_ver=' + GluttonLinkInserter.openUrlVersion;
-        //newLink = this.mapOpenURLToGlutton(span)
-        var child = this.buildButton(query);
+        var newQuery = this.mapOpenURLToGlutton(query)
+        var child = this.buildButton(newQuery);
         span.appendChild(child);
         span.setAttribute('name', 'GluttonVisited');
       }
@@ -479,7 +485,7 @@ GluttonLinkInserter = {
    * @param {Object} href
    */
   buildButton         : function(href) {
-    debug('making link: ' + this.openURLPrefix + href + '&sid=glutton-browser-addon');
+    debug('making link: ' + this.gluttonPrefix + href + '&sid=glutton-browser-addon');
 
     var span = document.createElement('span');
     this.makeChild(href, document, span);
@@ -495,17 +501,13 @@ GluttonLinkInserter = {
     a.alt         = 'Glutton';
     a.name        = 'GluttonLink';
     a.className   = 'glutton-link';
-    a.textContent = 'Glutton';
+    a.textContent = 'glutton';
     a.rel         = 'noopener noreferrer';
 
     return a;
   },
 
   makeChild: function(href, document, parent) {
-    /*var key = LZString.compress(href),
-        resourceUrl
-    ;*/
-
     // insert the sid in the openurl for usage statistics reason
     if (!~href.indexOf('sid=')) {
       // sid is alone in the given openurl
@@ -524,8 +526,7 @@ GluttonLinkInserter = {
 
     var sid = this.parseQuery(href).sid;
 
-    var requestUrl = GluttonLinkInserter.openURLPrefix + href 
-    ;
+    var requestUrl = GluttonLinkInserter.gluttonPrefix + href;
 
     $.ajax(
       {
@@ -534,7 +535,7 @@ GluttonLinkInserter = {
         tryCount: 0,
         maxRetry: 1,
         success : function(data) {
-          parent
+          parent && data.oaLink
           && parent.appendChild(
             GluttonLinkInserter.createLink(data.oaLink)
           );
@@ -575,6 +576,70 @@ GluttonLinkInserter = {
       }
     }
     return query;
+  },
+
+  getAllUrlParams: function(url) {
+    // get query string from url (optional) or window
+    var queryString = url;
+
+    // we'll store the parameters here
+    var obj = {};
+
+    // if query string exists
+    if (queryString) {
+
+      // stuff after # is not part of query string, so get rid of it
+      queryString = queryString.split('#')[0];
+
+      // split our query string into its component parts
+      var arr = queryString.split('&');
+
+      for (var i = 0; i < arr.length; i++) {
+        // separate the keys and the values
+        var a = arr[i].split('=');
+
+        // set parameter name and value (use 'true' if empty)
+        var paramName = a[0];
+        var paramValue = typeof (a[1]) === 'undefined' ? true : a[1];
+
+        // (optional) keep case consistent
+        paramName = paramName.toLowerCase();
+        if (typeof paramValue === 'string') paramValue = paramValue.toLowerCase();
+
+        // if the paramName ends with square brackets, e.g. colors[] or colors[2]
+        if (paramName.match(/\[(\d+)?\]$/)) {
+
+          // create key if it doesn't exist
+          var key = paramName.replace(/\[(\d+)?\]/, '');
+          if (!obj[key]) obj[key] = [];
+
+          // if it's an indexed array e.g. colors[2]
+          if (paramName.match(/\[\d+\]$/)) {
+            // get the index value and add the entry at the appropriate position
+            var index = /\[(\d+)\]/.exec(paramName)[1];
+            obj[key][index] = paramValue;
+          } else {
+            // otherwise add the value to the end of the array
+            obj[key].push(paramValue);
+          }
+        } else {
+          // we're dealing with a string
+          if (!obj[paramName]) {
+            // if it doesn't exist, create property
+            obj[paramName] = paramValue;
+          } else if (obj[paramName] && typeof obj[paramName] === 'string'){
+            // if property does exist and it's a string, convert it to an array
+            obj[paramName] = [obj[paramName]];
+            obj[paramName].push(paramValue);
+          } else {
+            // otherwise add the property
+            obj[paramName].push(paramValue);
+          }
+        }
+      }
+    }
+
+    return obj;
   }
 
 };

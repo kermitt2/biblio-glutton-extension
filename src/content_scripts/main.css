@@ -7,7 +7,7 @@ a[name="GluttonLink"].glutton-link {
     border-left-color:   #ccc;
     border-bottom-color: #000;
     border-right-color:  #000;
-    background:          #458ca5 !important;
+    background:          #404040 !important;
     text-align:          center;
     text-decoration:     none !important;
     font:                normal 10px Verdana;
@@ -22,8 +22,8 @@ a[name="GluttonLink"].glutton-link {
 
 a[name="GluttonLink"].glutton-link:hover {
     text-decoration: none !important;
-    color:           white !important;
-    background:      #c4d733 !important;
+    color:           #000000 !important;
+    background:      #D3D3D3 !important;
     font-weight:     bold;
 }
 
