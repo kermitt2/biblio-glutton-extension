@@ -14,6 +14,14 @@ This browser extension performs the following task:
 
 * Add a Glutton button next to any DOI, PMID, PMCID, PII and OpenUrl found in the browser page in case the corresponding document is available as Open Access, based on the Unpaywall dataset. Clicking on the Glutton button will open a new tab with the corresponding PDF. 
 
+## Examples
+
+![Wikipedia](doc/img03.png)
+
+![science-direct](doc/img01.png)
+
+![Wiley Onlinelibrary](doc/img02.png)
+
 ## Supported identifiers and protocols
 
 Linking work at item level (e.g. article) and will try to identifying the following identifiers in the web page:
@@ -29,10 +37,6 @@ Linking work at item level (e.g. article) and will try to identifying the follow
 * Firefox
 
 * Chrome
-
-## Examples
-
-...
 
 ## How to install
 
@@ -54,7 +58,7 @@ npm run run
 
 ## Back end service
 
-The extension requires a functional [biblio-glutton](https://github.com/kermitt2/biblio-glutton) service. By default, the science-miner biblio-glutton service is used, but you can installed your own server to optimize response time. 
+The extension requires a functional [biblio-glutton](https://github.com/kermitt2/biblio-glutton) service. By default, the science-miner biblio-glutton service is used, but you can install your own biblio-glutton server to optimize response time, add your own repositories or local subscription access information. 
  
 # License and contact
 

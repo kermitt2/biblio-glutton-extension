@@ -83,7 +83,8 @@ GluttonLinkInserter = {
     HAS_OPEN_URL          : 4,
     HAS_PII               : 5,
     GOOGLE_SCHOLAR_OPENURL: 6,
-    SCOPUS_DOI            : 7
+    SCOPUS_DOI            : 7,
+    DOI_ADDRESS_VARIA     : 8,
   },
 
   scopusExternalLinkPrefix: 'www.scopus.com/redirect/linking.uri?targetURL=',
@@ -140,7 +141,7 @@ GluttonLinkInserter = {
 
             if (matchDOI) {
               spanElm.innerHTML = text.replace(this.regexDoiPatternConservative,
-                                               '<a href="http://dx.doi.org/$1" name="GluttonInserted">$1</a>');
+                                               '<a href="http://doi.org/$1" name="GluttonInserted">$1</a>');
               text              = spanElm.innerHTML;
             }
             if (matchPMID) {
@@ -292,8 +293,12 @@ GluttonLinkInserter = {
         //this.createOpenUrlLink(href, link);
       }
       else if (flags === this.flags.DOI_ADDRESS) {
-        // doi
+        // doi as CrossRef link
         this.createDoiLink(href, link);
+      }
+      else if (flags === this.flags.DOI_ADDRESS_VARIA) {
+        // doi in a non CrossRef form
+        this.createDoiLinkVaria(href, link);
       }
       else if (flags === this.flags.GOOGLE_SCHOLAR_OPENURL) {
         // (deactivated for the moment, in theory we would need to a google scholar library config with 
@@ -360,8 +365,12 @@ GluttonLinkInserter = {
                 href.indexOf('doi.acm.org') !== -1 ||
                 href.indexOf('dx.crossref.org') !== -1)
                && href.match(this.doiPattern)) {
-      // Check if the href contains a DOI link
+      // Check if the href contains a DOI link for all crossref style links
       mask = this.flags.DOI_ADDRESS;
+    } else if ( ( (href.indexOf('/doi/10.') !== -1) || (href.indexOf('onlinelibrary.wiley.com') !== -1 && href.indexOf('&key=10.') !== -1) )
+               && href.match(this.regexDoiPatternConservative) ) {
+      // Check if the href contains a DOI link for Wiley style links ('onlinelibrary.wiley.com')
+      mask = this.flags.DOI_ADDRESS_VARIA;
     } else if (href.indexOf('ncbi.nlm.nih.gov') !== -1 && this.pubmedPattern.test(href)) {
       // Check if the href contains a PMID link
       mask = this.flags.PUBMED_ADDRESS;
@@ -398,6 +407,18 @@ GluttonLinkInserter = {
       return;
     }
     var doiString = matchInfo[this.doiGroup];
+    var gluttonUrl  = 'oa?doi=' + doiString;
+    var newLink   = this.buildButton(gluttonUrl);
+    link.parentNode.insertBefore(newLink, link.nextSibling);
+    link.setAttribute('name', 'GluttonVisited');
+  },
+
+  createDoiLinkVaria: function(href, link) {
+    var matchInfo = this.regexDoiPatternConservative.exec(href);
+    if (matchInfo.length < 1) {
+      return;
+    }
+    var doiString = matchInfo[matchInfo.length-1];
     var gluttonUrl  = 'oa?doi=' + doiString;
     var newLink   = this.buildButton(gluttonUrl);
     link.parentNode.insertBefore(newLink, link.nextSibling);
@@ -476,8 +497,6 @@ GluttonLinkInserter = {
         span.appendChild(child);
         span.setAttribute('name', 'GluttonVisited');
       }
-
-
     }
   },
 
@@ -487,8 +506,7 @@ GluttonLinkInserter = {
    * @param {Object} href
    */
   buildButton         : function(href) {
-    debug('making link: ' + this.gluttonPrefix + href + '&sid=glutton-browser-addon');
-
+    //log('making link: ' + this.gluttonPrefix + href + '&sid=glutton-browser-addon');
     var span = document.createElement('span');
     this.makeChild(href, document, span);
     return span;

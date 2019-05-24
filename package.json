@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "web-ext build -s ./src -a ./web-ext-artifacts",
-    "run": "web-ext run -s ./src -a ./web-ext-artifacts --browser-console --start-url https://en.wikipedia.org/wiki/Radioactive_decay"
+    "run": "web-ext run -s ./src -a ./web-ext-artifacts --browser-console --start-url https://en.wikipedia.org/wiki/Bay_cat --start-url https://onlinelibrary.wiley.com/doi/pdf/10.1111/jcpp.12119"
   },
   "repository": {
     "type": "git",
