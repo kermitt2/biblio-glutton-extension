@@ -54,8 +54,8 @@ npm run run
 
 ## Back end service
 
-The extension requires a functional [biblio-glutton](https://github.com/kermitt2/biblio-glutton) service. 
-
+The extension requires a functional [biblio-glutton](https://github.com/kermitt2/biblio-glutton) service. By default, the science-miner biblio-glutton service is used, but you can installed your own server to optimize response time. 
+ 
 # License and contact
 
 biblio-glutton-extension is distributed under [Apache 2.0 license](http://www.apache.org/licenses/LICENSE-2.0). 

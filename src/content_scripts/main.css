@@ -7,13 +7,13 @@ a[name="GluttonLink"].glutton-link {
     border-left-color:   #ccc;
     border-bottom-color: #000;
     border-right-color:  #000;
-    background:          #404040 !important;
+    background:          #009933 !important;
     text-align:          center;
     text-decoration:     none !important;
     font:                normal 10px Verdana;
     color:               white !important;
     font-weight:         bold;
-    /*    border-radius: 5px;*/
+    border-radius:       5px;
 }
 
 [class^="gs"] > a[name="GluttonLink"] {
@@ -22,8 +22,8 @@ a[name="GluttonLink"].glutton-link {
 
 a[name="GluttonLink"].glutton-link:hover {
     text-decoration: none !important;
-    color:           #000000 !important;
-    background:      #D3D3D3 !important;
+    color:           white !important;
+    background:      #00cc44 !important;
     font-weight:     bold;
 }
 

@@ -437,7 +437,9 @@ GluttonLinkInserter = {
   createPIILink: function(href, link) {
     var matches = href.match(this.regexPIIPattern);
     if (matches && (matches.length > 0)) {
-      var gluttonUrl = 'oa?pii=' + matches[0];
+      var thePii = matches[0]
+      thePii = thePii.replace('pii/','');
+      var gluttonUrl = 'oa?pii=' + thePii;
       var newLink  = this.buildButton(gluttonUrl);
       link.parentNode.insertBefore(newLink, link.nextSibling);
       link.setAttribute('name', 'GluttonVisited');
