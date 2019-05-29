@@ -44,6 +44,7 @@ const forbidenElements = ['applet',
                           'g',
                           'path',
                           'text',
+                          'style',
                           'rect'];
 
 config = {
