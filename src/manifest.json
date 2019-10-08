@@ -17,7 +17,8 @@
   "permissions": [
     "<all_urls>",
     "tabs",
-    "webNavigation"
+    "webNavigation",
+    "storage"
   ],
   "background": {
     "scripts": ["background/postInstall.js", "background/tabBootstrap.js"]

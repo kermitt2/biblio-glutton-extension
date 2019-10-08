@@ -18,6 +18,11 @@ body {
   -webkit-box-shadow: #888 2px 2px 2px;
 }
 
+.options-row {
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
 .accept {
   background-color: green;
   float: right;
