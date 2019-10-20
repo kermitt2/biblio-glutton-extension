@@ -1,3 +1,6 @@
+/*
+ * @prettier
+ */
 function saveOptions(e) {
   e.preventDefault();
   console.log($('#show-istex').is(':checked'));

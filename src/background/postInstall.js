@@ -1,3 +1,6 @@
+/*
+ * @prettier
+ */
 'use strict';
 
 function handleInstalled(details) {

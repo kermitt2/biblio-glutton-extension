@@ -37,6 +37,10 @@ body {
 
 }
 
+#popup-body #glutton-list > div {
+  display: block;
+}
+
 #popup-body #glutton-list-title {
   font-size: 16px;
   display: inline-block;
@@ -44,17 +48,110 @@ body {
   margin-bottom: 10px;
 }
 
-#popup-body #glutton-list-ids {
+#popup-body #glutton-list-data {
+  border: 1px solid black;
+  cursor: pointer;
+  overflow-y: scroll;
+  max-height: 100px;
   font-size: 16px;
   display: inline-block;
   text-decoration: underline;
   margin-bottom: 10px;
 }
 
-#popup-body #glutton-list-buttons {
+#popup-body #glutton-list-data li {
+  margin-top: 3px;
+  margin-bottom: 3px;
+}
+
+#popup-body #glutton-list-data li > div {
+  display: inline-block;
+  vertical-align:middle;
+  white-space: nowrap;
+  text-overflow:ellipsis;
+  overflow: hidden;
+  max-width: 85%;
+}
+
+#popup-body #glutton-list-data li > i {
+  display: inline-block;
+  vertical-align:middle;
+  margin-left: 10px;
+  display: inline-block;
+  /*width: 10%;*/
+}
+
+#popup-body #glutton-list-data .selected {
+  border: 1px solid black;
+}
+
+#popup-body #glutton-list-selected-item {
   display: none;
 }
 
-#popup-body #glutton-list-ids .selected {
+#popup-body #glutton-list-selected-item-data {
+  max-height: 250px;
+  overflow: hidden;
+  overflow-y: scroll;
   border: 1px solid black;
+  padding: 10px;
+}
+
+#popup-body #glutton-list-selected-item-data .data-row {
+  display: block;
+  margin-top: 3px;
+  margin-bottom: 3px;
+}
+
+#popup-body #glutton-list-selected-item-data .data-row .key:after {
+  content: ": ";
+}
+
+#popup-body #glutton-list-selected-item-data .data-row .key{
+  display: inline-block;
+  vertical-align:middle;
+  max-width: 20%;
+  display: inline-block;
+  margin-right: 2%;
+  white-space: nowrap;
+  text-overflow:ellipsis;
+  overflow: hidden;
+}
+
+#popup-body #glutton-list-selected-item-data .data-row .value {
+  display: inline-block;
+  vertical-align:middle;
+  max-width: 70%;
+  display: inline-block;
+  white-space: nowrap;
+  text-overflow:ellipsis;
+  overflow: hidden;
+}
+
+#popup-body #glutton-list-data-title {
+  display: block;
+  margin-top: 5px;
+  margin-bottom: 15px;
+  margin-right: 5px;
+  margin-left: 5px;
+}
+
+#popup-body #glutton-list-data {
+  display: block;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  margin-right: 5px;
+  margin-left: 5px;
+}
+
+#popup-body #glutton-list-buttons {
+  margin-top: 5px;
+  margin-bottom: 5px;
+  margin-right: 15px;
+  margin-left: 15px;
+  display: block;
+}
+
+#glutton-data-paste {
+  display: none;
 }

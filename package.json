@@ -28,6 +28,6 @@
     "hoek": ">=4.2.1"
   },
   "devDependencies": {
-    "web-ext": "^1.10.1"
+    "web-ext": "^3.2.0"
   }
 }
