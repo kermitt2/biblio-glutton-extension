@@ -15,19 +15,63 @@ browser.storage.local.get().then(function(settings) {
 
   port.postMessage(page);
 
-  let refbibs = {};
+  let refbibs = {},
+    gluttonLinkClicked = null;
 
+  // Handle context menu 'cite'
+  $(document).ready(function() {
+    $('a').contextmenu(function() {
+      gluttonLinkClicked = $(this).attr('name') === 'GluttonLink' ? $(this) : null;
+    });
+    $(document).bind('DOMNodeInserted', function(e) {
+      var element = $(e.target);
+      if (element.is('a'))
+        return element.contextmenu(function() {
+          gluttonLinkClicked = $(this).attr('name') === 'GluttonLink' ? $(this) : null;
+        });
+      return element.find('a').contextmenu(function() {
+        gluttonLinkClicked = $(this).attr('name') === 'GluttonLink' ? $(this) : null;
+      });
+    });
+  });
+
+  // Listeners
   browser.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    if (request.message === 'searchRefbib') {
-      return searchRefbib(request.data.selectionText);
-    }
-    if (request.message === 'selectRefbib') {
+    // Send selection to GROBID services
+    if (request.message === 'resolve') {
+      let selection = window.getSelection(),
+        target = getCommonParent(selection.focusNode, selection.anchorNode),
+        hasGluttonBtn = target.has('span > a[name="test"]');
+      if (hasGluttonBtn.length === 0) {
+        return resolve(request.data.selectionText, null, function(data) {
+          addGluttonButtons(target, createGluttonButtons(data.oaLink, createIstexLink(data.istexId), data.gluttonId));
+        });
+      }
+      // Cite
+    } else if (request.message === 'cite') {
+      if (gluttonLinkClicked !== null) {
+        let id = gluttonLinkClicked.parent('span').attr('gluttonId');
+        if (typeof refbibs[id] === 'undefined' || typeof refbibs[id].publisher === 'undefined') {
+          return resolve(
+            gluttonLinkClicked
+              .parent('span')
+              .prev()
+              .text(),
+            id,
+            function(data) {
+              return copyClipboard(createBibtex(id));
+            }
+          );
+        } else return copyClipboard(createBibtex(id));
+      } else alert('Cite are only works on glutton links');
+      // Select refbib & highlight it
+    } else if (request.message === 'selectRefbib') {
       return selectRefbib(request.data.gluttonId);
-    }
-    if (request.message === 'addRefbib') {
+      // Add refbib into refbibs
+    } else if (request.message === 'addRefbib') {
       refbibs[request.data.gluttonId] = request.data;
-    }
-    if (request.message === 'gluttonList') {
+      // Build refbibs list & send it to popup
+    } else if (request.message === 'gluttonList') {
       let result = [];
       for (let [key, refbib] of Object.entries(refbibs)) {
         if (refbib !== null)
@@ -41,32 +85,24 @@ browser.storage.local.get().then(function(settings) {
     }
   });
 
+  // Return value of show-istex settings
   function showIstex() {
     return typeof settings['show-istex'] !== 'undefined' && settings['show-istex'];
   }
 
+  // Copy to to clipboard the given text
   function copyClipboard(text) {
-    const el = document.createElement('textarea'); // Create a <textarea> element
-    el.value = text; // Set its value to the string that you want copied
-    el.setAttribute('readonly', ''); // Make it readonly to be tamper-proof
-    el.style.position = 'absolute';
-    el.style.left = '-9999px'; // Move outside the screen to make it invisible
-    document.body.appendChild(el); // Append the <textarea> element to the HTML document
-    const selected =
-      document.getSelection().rangeCount > 0 // Check if there is any content selected previously
-        ? document.getSelection().getRangeAt(0) // Store selection if found
-        : false; // Mark as false to know no selection existed before
-    el.select(); // Select the <textarea> content
-    document.execCommand('copy'); // Copy - only works as a result of a user action (e.g. click events)
-    document.body.removeChild(el); // Remove the <textarea> element
-    if (selected) {
-      // If a selection existed before copying
-      document.getSelection().removeAllRanges(); // Unselect everything on the HTML document
-      document.getSelection().addRange(selected); // Restore the original selection
-    }
-    return alert('Text copied in the clipboard');
+    navigator.clipboard.writeText(text).then(
+      function() {
+        alert('Text copied in the clipboard');
+      },
+      function() {
+        alert('Copy in clipboard failed');
+      }
+    );
   }
 
+  // Higlight the span with given id
   function selectRefbib(id) {
     let element = $('span[gluttonId="' + id + '"]');
     $([document.documentElement, document.body]).animate(
@@ -86,6 +122,7 @@ browser.storage.local.get().then(function(settings) {
       .removeClass('glutton-selected');
   }
 
+  // Get an id of given refbib, (or text of it if there is no id)
   function getRefbibId(refbib) {
     let keys = ['doi', 'pmid', 'pmc', 'istexid'];
     for (let i = 0; i < keys.length; i++) {
@@ -94,6 +131,7 @@ browser.storage.local.get().then(function(settings) {
     return getRefbibText(refbib.gluttonId);
   }
 
+  // Get text of refbib with given id
   function getRefbibText(id) {
     let span = $('span[gluttonId="' + id + '"]'),
       previous = span.prev();
@@ -101,18 +139,20 @@ browser.storage.local.get().then(function(settings) {
     return previous.text();
   }
 
+  // Create group of Glutton buttons
   function createGluttonButtons(oaLink = '', istexLink = '', id = 'null') {
     let result = document.createElement('span');
     result.setAttribute('gluttonId', id);
     result.appendChild(createLink(oaLink, oaLink !== '' ? 'glutton-link' : 'glutton-link-disabled', 'glutton'));
     if (istexLink !== '' && showIstex()) result.appendChild(createLink(istexLink, 'glutton-link', 'istex'));
-    if (typeof refbibs[id].publisher !== 'undefined') result.appendChild(createCiteBtn(id));
     result.appendChild(createId(id));
     return result;
   }
 
+  // Add (or refresh) glutton button
   function addGluttonButtons(target, elements) {
     let alreadyExist = target.find('span[gluttonid]');
+    œœ;
     if (alreadyExist.length > 0) {
       alreadyExist.each(function() {
         let id = $(this).attr('gluttonid');
@@ -122,24 +162,7 @@ browser.storage.local.get().then(function(settings) {
     } else target.append(elements);
   }
 
-  function createCiteBtn(id) {
-    let a = document.createElement('a');
-    a.href = '';
-    a.target = '_blank';
-    a.alt = 'Glutton';
-    a.name = 'GluttonLink';
-    a.className = 'glutton-cite';
-    a.textContent = 'cite';
-    a.rel = 'noopener noreferrer';
-    a.setAttribute('gluttonid', id);
-    $(a).click(function(event) {
-      event.preventDefault();
-      let id = $(this).attr('gluttonid');
-      return copyClipboard(createBibtex(id));
-    });
-    return a;
-  }
-
+  // Create element to display 'id' of Glutton buttons
   function createId(text) {
     let result = document.createElement('sup');
     result.className = 'glutton-indice';
@@ -147,10 +170,12 @@ browser.storage.local.get().then(function(settings) {
     return result;
   }
 
+  // Create an ISTEX link
   function createIstexLink(id) {
     return 'https://api.istex.fr/document/' + id + '/fulltext/pdf';
   }
 
+  // Create a Glutton link element
   function createLink(resourceUrl = '', className = '', text = 'null') {
     // set the added link, this will avoid an extra call to the OpenURL API and fix the access url
     let a = document.createElement('a');
@@ -168,6 +193,7 @@ browser.storage.local.get().then(function(settings) {
     return a;
   }
 
+  // Extract data from GROBID response
   function extractParams(element) {
     let root = $('<root/>').html($(element).html());
     return {
@@ -184,6 +210,7 @@ browser.storage.local.get().then(function(settings) {
     };
   }
 
+  // Build an URL with parameters
   function buildUrl(baseUrl, parameters) {
     let result = baseUrl;
     if (typeof parameters === 'object') {
@@ -200,6 +227,7 @@ browser.storage.local.get().then(function(settings) {
     return encodeURI(result);
   }
 
+  // Get common parents of two elements
   function getCommonParent(a, b) {
     return $(a)
       .parents()
@@ -207,47 +235,39 @@ browser.storage.local.get().then(function(settings) {
       .first();
   }
 
-  function searchRefbib(text) {
-    let selection = window.getSelection(),
-      target = getCommonParent(selection.focusNode, selection.anchorNode),
-      hasGluttonBtn = target.has('span > a[name="test"]');
-    if (hasGluttonBtn.length === 0) {
-      return $.ajax({
-        'url': refbibUrl,
-        'method': 'POST',
-        'data': {
-          'citations': text
-        },
-        'dataType': 'xml'
+  // Call GROBID service to resolve refbib
+  function resolve(text, id = null, cb) {
+    return $.ajax({
+      'url': refbibUrl,
+      'method': 'POST',
+      'data': {
+        'citations': text
+      },
+      'dataType': 'xml'
+    })
+      .done(function(data) {
+        let parameters = extractParams(data.documentElement),
+          url = buildUrl(gluttonLookupUrl, parameters);
+        return $.get(url)
+          .done(function(data) {
+            let gluttonId = id === null ? Object.keys(refbibs).length.toString() : id;
+            data.gluttonId = gluttonId;
+            refbibs[gluttonId] = data;
+            return cb(data);
+          })
+          .fail(function(res) {
+            console.log(res);
+            alert('SearchRefBib failed : ' + res.responseJSON.message);
+          });
       })
-        .done(function(data) {
-          let parameters = extractParams(data.documentElement),
-            url = buildUrl(gluttonLookupUrl, parameters);
-          return $.get(url)
-            .done(function(data) {
-              console.log(data);
-              let gluttonId = Object.keys(refbibs).length.toString();
-              data.gluttonId = gluttonId;
-              refbibs[gluttonId] = data;
-              return addGluttonButtons(
-                target,
-                createGluttonButtons(data.oaLink, createIstexLink(data.istexId), gluttonId)
-              );
-            })
-            .fail(function(res) {
-              console.log(res);
-              alert('SearchRefBib failed : ' + res.responseJSON.message);
-            });
-        })
-        .fail(function(res) {
-          console.log(res);
-          alert(res.statusText);
-        });
-    }
+      .fail(function(res) {
+        console.log(res);
+        alert(res.statusText);
+      });
   }
 
+  // Build cite with Bibtex format
   function createBibtex(id) {
-    console.log(id, refbibs[id]);
     if (typeof refbibs[id] === 'undefined' || typeof refbibs[id].publisher === 'undefined') return null;
     let author =
       typeof refbibs[id].author !== 'undefined' && refbibs[id].author.length > 0
@@ -323,3 +343,11 @@ browser.storage.local.get().then(function(settings) {
     return result;
   }
 });
+
+function onUpdated() {
+  console.log('item updated successfully');
+}
+
+function onError() {
+  console.log('error updating item:' + browser.runtime.lastError);
+}

@@ -116,7 +116,7 @@ span[gluttonid] sup {
 
 .glutton-selected {
     background-color: yellow !important;
-    border: 1px solid black !important;
-    padding-top: 10px;
-    padding-bottom: 10px;
+    border:           1px solid black !important;
+    padding-top:      10px;
+    padding-bottom:   10px;
 }

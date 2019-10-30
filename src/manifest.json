@@ -21,7 +21,8 @@
     "webNavigation",
     "storage",
     "activeTab",
-    "contextMenus"
+    "contextMenus",
+    "clipboardWrite"
   ],
   "browser_action": {
     "default_icon": "icons/logo-96.png",

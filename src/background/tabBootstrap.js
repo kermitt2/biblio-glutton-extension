@@ -17,15 +17,25 @@ Create all the context menu items.
 */
 browser.contextMenus.create(
   {
-    id: 'searchRefbib',
-    title: 'Search RefBib',
+    id: 'resolve',
+    title: 'Resolve',
     contexts: ['selection']
   },
   onCreated
 );
 
+browser.contextMenus.create(
+  {
+    id: 'cite',
+    title: 'Cite this paper',
+    contexts: ['link']
+  },
+  onCreated
+);
+
 browser.contextMenus.onClicked.addListener(function(info, tab) {
-  if (info.menuItemId == 'searchRefbib') browser.tabs.sendMessage(tab.id, { 'message': 'searchRefbib', 'data': info });
+  if (info.menuItemId == 'resolve') browser.tabs.sendMessage(tab.id, { 'message': 'resolve', 'data': info });
+  if (info.menuItemId == 'cite') browser.tabs.sendMessage(tab.id, { 'message': 'cite', 'data': info });
 });
 
 browser.runtime.onMessage.addListener(function(request, sender, sendResponse) {
