@@ -5,15 +5,16 @@
 let openTabQuery = { 'active': true, 'currentWindow': true };
 
 window.onload = function() {
-  browser.tabs.query(openTabQuery, function(tabs) {
+  chrome.tabs.query(openTabQuery, function(tabs) {
     $('#debug').text('#' + tabs[0].id + ' - ' + new Date().toLocaleString());
-    $('#glutton-list-selected-item').hide();
   });
   refreshGluttonList();
+  refreshGrobidBtn();
 };
 
-browser.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-  if (request.message === 'gluttonList') return addGluttonList(request.data);
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+  if (request.message === 'fromContentScriptToPopup:gluttonList') return buildGluttonList(request.data);
+  else if (request.message === 'fromContentScriptToPopup:grobidBtn') return buildGrobidBtn(request.data);
 });
 
 function onOpened() {
@@ -25,7 +26,7 @@ function onError(error) {
 }
 
 $('#preferences').click(function() {
-  let opening = browser.runtime.openOptionsPage();
+  let opening = chrome.runtime.openOptionsPage();
   opening.then(onOpened, onError);
 });
 
@@ -33,10 +34,15 @@ function defaultCallback(res) {
   alert(res);
 }
 
+function refreshGrobidBtn() {
+  chrome.tabs.query(openTabQuery, function(tabs) {
+    chrome.tabs.sendMessage(tabs[0].id, { 'message': 'fromPopupToContentScript:grobidBtn' });
+  });
+}
+
 function refreshGluttonList() {
-  $('#glutton-list-data').empty();
-  browser.tabs.query(openTabQuery, function(tabs) {
-    browser.tabs.sendMessage(tabs[0].id, { 'message': 'gluttonList' });
+  chrome.tabs.query(openTabQuery, function(tabs) {
+    chrome.tabs.sendMessage(tabs[0].id, { 'message': 'fromPopupToContentScript:gluttonList' });
   });
 }
 
@@ -63,12 +69,26 @@ function setInfos(item) {
   }
 }
 
-function addGluttonList(items) {
-  let list = $('<ul>');
-  for (var i = 0; i < items.length; i++) {
-    list.append(createItem(items[i], list));
+function buildGrobidBtn(state) {
+  if (state) $('#grobid').css('display', 'block');
+  else $('#grobid').css('display', 'none');
+}
+
+function buildGluttonList(items) {
+  $('#popup-body #glutton-list-selected-item').css('display', 'none');
+  $('#popup-body #glutton-list-data').empty();
+  if (items.length === 0) {
+    $('#popup-body #glutton-list-no-data').css('display', 'block');
+    $('#popup-body #glutton-list-data').css('display', 'none');
+  } else {
+    $('#popup-body #glutton-list-no-data').css('display', 'none');
+    $('#popup-body #glutton-list-data').css('display', 'block');
+    let list = $('<ul>');
+    for (var i = 0; i < items.length; i++) {
+      list.append(createItem(items[i], list));
+    }
+    $('#popup-body #glutton-list-data').append(list);
   }
-  $('#glutton-list-data').append(list);
 }
 
 function isLink(key) {
@@ -90,10 +110,9 @@ function createItem(item, list) {
       .append(data)
       .append(searchBtn);
   searchBtn.click(function() {
-    data.click();
-    browser.tabs.query(openTabQuery, function(tabs) {
-      browser.tabs.sendMessage(tabs[0].id, {
-        'message': 'selectRefbib',
+    chrome.tabs.query(openTabQuery, function(tabs) {
+      chrome.tabs.sendMessage(tabs[0].id, {
+        'message': 'fromPopupToContentScript:selectRefbib',
         'data': { 'gluttonId': result.attr('gluttonId') }
       });
     });
@@ -111,10 +130,10 @@ function createItem(item, list) {
       );
       setInfos(item.data);
       $('#cite-bibtex').attr('gluttonid', item.id);
-      $('#glutton-list-selected-item').show();
+      $('#glutton-list-selected-item').css('display', 'block');
     } else {
       $('#glutton-list-data .selected').removeClass('selected');
-      $('#glutton-list-selected-item').hide();
+      $('#glutton-list-selected-item').css('display', 'none');
     }
   });
   return result;

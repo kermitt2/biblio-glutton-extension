@@ -2,20 +2,31 @@
  * @prettier
  */
 'use strict';
+if (typeof browser !== 'undefined')
+  browser.storage.local.get().then(function(settings) {
+    return doTheJob(settings);
+  });
+else
+  chrome.storage.local.get(null, function(settings) {
+    if (chrome.runtime.lastError) console.log('error chrome.storage.local.get', chrome.runtime.lastError);
+    return doTheJob(settings);
+  });
 
-browser.storage.local.get().then(function(settings) {
-  var port = browser.runtime.connect(),
+function doTheJob(settings) {
+  console.log(window.document.contentType);
+
+  var port = chrome.runtime.connect(),
     page = {
       'contentType': window.document.contentType
     };
 
-  let refbibUrl = 'http://localhost:8070/api/processCitation',
-    gluttonLookupUrl = 'http://cloud.science-miner.com/glutton/service/lookup',
-    gluttonOAUrl = 'http://cloud.science-miner.com/glutton/service/oa_istex';
+  let processCitationUrl = settings.GROBID_URL + '/processCitation', // http://localhost:8070/api
+    lookupUrl = settings.GLUTTON_URL + '/lookup';
 
   port.postMessage(page);
 
   let refbibs = {},
+    targets = {},
     gluttonLinkClicked = null;
 
   // Handle context menu 'cite'
@@ -36,58 +47,100 @@ browser.storage.local.get().then(function(settings) {
   });
 
   // Listeners
-  browser.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+  chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     // Send selection to GROBID services
-    if (request.message === 'resolve') {
+    if (request.message === 'fromContextMenusToContentScript:resolve') {
       let selection = window.getSelection(),
         target = getCommonParent(selection.focusNode, selection.anchorNode),
-        hasGluttonBtn = target.has('span > a[name="test"]');
-      if (hasGluttonBtn.length === 0) {
-        return resolve(request.data.selectionText, null, function(data) {
-          addGluttonButtons(target, createGluttonButtons(data.oaLink, createIstexLink(data.istexId), data.gluttonId));
-        });
-      }
+        gluttonId = Object.keys(refbibs).length.toString();
+      if (typeof refbibs[gluttonId] === 'undefined') refbibs[gluttonId] = {};
+      Object.assign(refbibs[gluttonId], { 'text': selection.toString() });
+      targets[gluttonId] = target;
+      return chrome.runtime.sendMessage({
+        'message': 'fromContentScriptToBackground:resolve',
+        'data': {
+          'processCitationUrl': processCitationUrl,
+          'lookupUrl': lookupUrl,
+          'method': 'POST',
+          'data': {
+            'citations': selection.toString()
+          },
+          'dataType': 'xml',
+          'gluttonId': gluttonId
+        }
+      });
+      // Get result from background (GROBID processCitation result)
+    } else if (request.message === 'fromBackgroundToContentScript:resolve') {
+      if (!request.data.err) {
+        Object.assign(refbibs[request.data.res.gluttonId], request.data.res);
+        return addGluttonButtons(
+          targets[request.data.res.gluttonId],
+          createGluttonButtons(
+            request.data.res.oaLink,
+            createIstexLink(request.data.res.istexId),
+            request.data.res.gluttonId
+          )
+        );
+      } else console.log(request.data);
       // Cite
-    } else if (request.message === 'cite') {
+    } else if (request.message === 'fromContextMenusToContentScript:cite') {
       if (gluttonLinkClicked !== null) {
         let id = gluttonLinkClicked.parent('span').attr('gluttonId');
         if (typeof refbibs[id] === 'undefined' || typeof refbibs[id].publisher === 'undefined') {
-          return resolve(
-            gluttonLinkClicked
-              .parent('span')
-              .prev()
-              .text(),
-            id,
-            function(data) {
-              return copyClipboard(createBibtex(id));
+          return chrome.runtime.sendMessage({
+            'message': 'fromContentScriptToBackground:resolve',
+            'data': {
+              'url': processCitationUrl,
+              'method': 'POST',
+              'data': {
+                'citations': gluttonLinkClicked
+                  .parent('span')
+                  .prev()
+                  .text()
+              },
+              'dataType': 'xml',
+              'id': id
             }
-          );
+          });
         } else return copyClipboard(createBibtex(id));
       } else alert('Cite are only works on glutton links');
+      // Build Cite
+    } else if (request.message === 'fromContextMenuToContentScript:cite') {
+      return copyClipboard(createBibtex(id));
       // Select refbib & highlight it
-    } else if (request.message === 'selectRefbib') {
+    } else if (request.message === 'fromPopupToContentScript:selectRefbib') {
       return selectRefbib(request.data.gluttonId);
       // Add refbib into refbibs
-    } else if (request.message === 'addRefbib') {
+    } else if (request.message === 'fromBackgroundToContentScript:addRefbib') {
+      console.log('addRefbib');
       refbibs[request.data.gluttonId] = request.data;
+      return;
       // Build refbibs list & send it to popup
-    } else if (request.message === 'gluttonList') {
+    } else if (request.message === 'fromPopupToContentScript:gluttonList') {
       let result = [];
       for (let [key, refbib] of Object.entries(refbibs)) {
         if (refbib !== null)
           result.push({
             'id': refbib.gluttonId,
             'data': refbib,
-            'text': refbib.text ? refbib.text : getRefbibId(refbib)
+            'text': getRefbibId(refbib)
           });
       }
-      return browser.runtime.sendMessage({ 'message': 'gluttonList', 'data': result });
+      console.log(refbibs);
+      console.log(result);
+      return chrome.runtime.sendMessage({ 'message': 'fromContentScriptToPopup:gluttonList', 'data': result });
+      // Add refbib into refbibs
+    } else if (request.message === 'fromPopupToContentScript:grobidBtn') {
+      return chrome.runtime.sendMessage({
+        'message': 'fromContentScriptToPopup:grobidBtn',
+        'data': page.contentType === 'application/pdf'
+      });
     }
   });
 
   // Return value of show-istex settings
   function showIstex() {
-    return typeof settings['show-istex'] !== 'undefined' && settings['show-istex'];
+    return typeof settings.SHOW_ISTEX !== 'undefined' && settings.SHOW_ISTEX;
   }
 
   // Copy to to clipboard the given text
@@ -112,6 +165,7 @@ browser.storage.local.get().then(function(settings) {
       500
     );
     element
+      .stop(true, true)
       .addClass('glutton-selected')
       .fadeOut(500)
       .fadeIn(500)
@@ -152,7 +206,6 @@ browser.storage.local.get().then(function(settings) {
   // Add (or refresh) glutton button
   function addGluttonButtons(target, elements) {
     let alreadyExist = target.find('span[gluttonid]');
-    œœ;
     if (alreadyExist.length > 0) {
       alreadyExist.each(function() {
         let id = $(this).attr('gluttonid');
@@ -172,6 +225,7 @@ browser.storage.local.get().then(function(settings) {
 
   // Create an ISTEX link
   function createIstexLink(id) {
+    if (!id) return;
     return 'https://api.istex.fr/document/' + id + '/fulltext/pdf';
   }
 
@@ -193,77 +247,12 @@ browser.storage.local.get().then(function(settings) {
     return a;
   }
 
-  // Extract data from GROBID response
-  function extractParams(element) {
-    let root = $('<root/>').html($(element).html());
-    return {
-      'postValidate': 'true',
-      'firstAuthor': root.find('author:first surname').text(), // firstAuthor
-      'atitle': root.find('analytic title[level="a"]').text(), // atitle
-      'jtitle': root.find('monogr title[level="j"]').text(), // jtitle
-      'volume': root.find('biblscope[unit="volume"]').text(), // volume
-      'firstPage': root.find('biblscope[unit="page"]').attr('from'), // firstPage
-      'doi': root.find('idno[type="doi"]').text(), // doi
-      'pmid': root.find('idno[type="pmid"]').text(), // pmid
-      'pmc': root.find('idno[type="pmc"]').text(), // pmc
-      'istexid': root.find('idno[type="istexid"]').text() // istexid
-    };
-  }
-
-  // Build an URL with parameters
-  function buildUrl(baseUrl, parameters) {
-    let result = baseUrl;
-    if (typeof parameters === 'object') {
-      let keys = Object.keys(parameters);
-      if (keys.length > 0) {
-        result += '?' + keys[0] + '=' + parameters[keys[0]];
-        if (keys.length > 1) {
-          for (let i = 1; i < keys.length; i++) {
-            if (parameters[keys[i]]) result += '&' + keys[i] + '=' + parameters[keys[i]];
-          }
-        }
-      }
-    }
-    return encodeURI(result);
-  }
-
   // Get common parents of two elements
   function getCommonParent(a, b) {
     return $(a)
       .parents()
       .has($(b))
       .first();
-  }
-
-  // Call GROBID service to resolve refbib
-  function resolve(text, id = null, cb) {
-    return $.ajax({
-      'url': refbibUrl,
-      'method': 'POST',
-      'data': {
-        'citations': text
-      },
-      'dataType': 'xml'
-    })
-      .done(function(data) {
-        let parameters = extractParams(data.documentElement),
-          url = buildUrl(gluttonLookupUrl, parameters);
-        return $.get(url)
-          .done(function(data) {
-            let gluttonId = id === null ? Object.keys(refbibs).length.toString() : id;
-            data.gluttonId = gluttonId;
-            refbibs[gluttonId] = data;
-            return cb(data);
-          })
-          .fail(function(res) {
-            console.log(res);
-            alert('SearchRefBib failed : ' + res.responseJSON.message);
-          });
-      })
-      .fail(function(res) {
-        console.log(res);
-        alert(res.statusText);
-      });
   }
 
   // Build cite with Bibtex format
@@ -342,12 +331,4 @@ browser.storage.local.get().then(function(settings) {
       '}';
     return result;
   }
-});
-
-function onUpdated() {
-  console.log('item updated successfully');
-}
-
-function onError() {
-  console.log('error updating item:' + browser.runtime.lastError);
 }

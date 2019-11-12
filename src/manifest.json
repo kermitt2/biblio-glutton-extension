@@ -30,7 +30,7 @@
     "default_popup": "popup/popup.html"
   },
   "background": {
-    "scripts": ["background/postInstall.js", "background/tabBootstrap.js"],
+    "scripts": ["background/postInstall.js", "vendors/jquery-3.2.1.js", "background/tabBootstrap.js"],
     "persistent": false
   },
   "options_ui": {
