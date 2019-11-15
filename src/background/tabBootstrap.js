@@ -42,10 +42,149 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
 });
 
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-  if (request.message === 'fromContentScriptToBackground:resolve') {
-    console.log(request.data);
+  console.log(request);
+  if (request.message === 'fromGluttonLinkInserterToBackground:lookup') {
+    $.ajax({
+      'url': request.data.url,
+      'timeout': 16000,
+      'tryCount': 0,
+      'maxRetry': 1,
+      'success': function(data) {
+        chrome.tabs.sendMessage(sender.tab.id, {
+          'message': 'fromBackgroundToGluttonLinkInserter:lookup',
+          'err': false,
+          'res': {
+            'gluttonId': request.data.gluttonId,
+            'url': request.data.url,
+            'oaLink': data.oaLink,
+            'istexLink': data.istexLink
+          }
+        });
+      },
+      'error': function(jqXHR, textStatus, errorThrown) {
+        chrome.tabs.sendMessage(sender.tab.id, {
+          'message': 'fromBackgroundToGluttonLinkInserter:lookup',
+          'err': true,
+          'res': {
+            'gluttonId': request.data.gluttonId,
+            'errorThrown': errorThrown,
+            'textStatus': textStatus,
+            'url': this.url
+          }
+        });
+        if (textStatus === 'timeout' && this.tryCount < this.maxRetry) {
+          this.tryCount++;
+          return $.ajax(this);
+        }
+      }
+    });
+  } else if (request.message === 'fromContentScriptToBackground:referenceAnnotations') {
+    return $.ajax({
+      'url': request.data.input,
+      'timeout': 16000,
+      'method': 'GET',
+      'xhrFields': {
+        'responseType': 'blob'
+      }
+    })
+      .done(function(pdf) {
+        let formData = new FormData();
+        formData.append('input', pdf);
+        return (
+          $.ajax({
+            'url': request.data.processHeaderDocumentUrl,
+            'timeout': 16000,
+            'method': request.data.method,
+            'data': formData,
+            'dataType': 'xml',
+            'cache': false,
+            'contentType': false,
+            'processData': false
+          })
+            .done(function(res) {
+              let parameters = extractParams(res.documentElement),
+                url = buildUrl(request.data.lookupUrl, parameters);
+              return callGluttonLookup(url, request.data.gluttonId, function(err, res) {
+                return chrome.tabs.sendMessage(sender.tab.id, {
+                  'message': 'fromBackgroundToContentScript:processHeaderDocument',
+                  'data': {
+                    'err': err,
+                    'res': res
+                  }
+                });
+              });
+            })
+            // call referenceAnnotationsUrl
+            .always(function(res) {
+              return $.ajax({
+                'url': request.data.referenceAnnotationsUrl,
+                'timeout': 16000,
+                'method': request.data.method,
+                'data': formData,
+                'dataType': request.data.dataType,
+                'cache': false,
+                'contentType': false,
+                'processData': false
+              })
+                .done(function(res) {
+                  return chrome.tabs.sendMessage(sender.tab.id, {
+                    'message': 'fromBackgroundToContentScript:referenceAnnotations',
+                    'data': {
+                      'err': false,
+                      'res': res
+                    }
+                  });
+                })
+                .fail(function(res) {
+                  let msg =
+                    res.status > 0
+                      ? res.status + ' : ' + res.statusText
+                      : 'Unable to send request to : ' +
+                        request.data.referenceAnnotationsUrl +
+                        '. Service not responding.';
+                  return chrome.tabs.sendMessage(sender.tab.id, {
+                    'message': 'fromBackgroundToContentScript:referenceAnnotations',
+                    'data': {
+                      'err': true,
+                      'res': msg
+                    }
+                  });
+                });
+            })
+            .fail(function(res) {
+              let msg =
+                res.status > 0
+                  ? res.status + ' : ' + res.statusText
+                  : 'Unable to send request to : ' +
+                    request.data.processCitationPatentPDFUrl +
+                    '. Service not responding.';
+              return chrome.tabs.sendMessage(sender.tab.id, {
+                'message': 'fromBackgroundToContentScript:processCitationPatentPDF',
+                'data': {
+                  'err': true,
+                  'res': msg
+                }
+              });
+            })
+        );
+      })
+      .fail(function(res) {
+        let msg =
+          res.status > 0
+            ? res.status + ' : ' + res.statusText
+            : 'Unable to send request to : ' + request.data.input + '. Service not responding.';
+        return chrome.tabs.sendMessage(sender.tab.id, {
+          'message': 'fromBackgroundToContentScript:referenceAnnotations',
+          'data': {
+            'err': true,
+            'res': msg
+          }
+        });
+      });
+  } else if (request.message === 'fromContentScriptToBackground:resolve') {
     return $.ajax({
       'url': request.data.processCitationUrl,
+      'timeout': 16000,
       'method': request.data.method,
       'data': request.data.data,
       'dataType': request.data.dataType
@@ -53,37 +192,30 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
       .done(function(res) {
         let parameters = extractParams(res.documentElement),
           url = buildUrl(request.data.lookupUrl, parameters);
-        return $.get(url)
-          .done(function(res) {
-            res.gluttonId = request.data.gluttonId;
-            return chrome.tabs.sendMessage(sender.tab.id, {
-              'message': 'fromBackgroundToContentScript:resolve',
-              'data': {
-                'err': false,
-                'res': res
-              }
-            });
-          })
-          .fail(function(res) {
-            return chrome.tabs.sendMessage(sender.tab.id, {
-              'message': 'fromBackgroundToContentScript:resolve',
-              'data': {
-                'err': true,
-                'res': res
-              }
-            });
+        return callGluttonLookup(url, request.data.gluttonId, function(err, res) {
+          return chrome.tabs.sendMessage(sender.tab.id, {
+            'message': 'fromBackgroundToContentScript:resolve',
+            'data': {
+              'err': err,
+              'res': res
+            }
           });
+        });
       })
       .fail(function(res) {
+        let msg =
+          res.status > 0
+            ? res.status + ' : ' + res.statusText
+            : 'Unable to send request to : ' + request.data.processCitationUrl + '. Service not responding.';
         return chrome.tabs.sendMessage(sender.tab.id, {
           'message': 'fromBackgroundToContentScript:resolve',
           'data': {
             'err': true,
-            'res': res.status + ' : ' + res.statusText
+            'res': msg
           }
         });
       });
-  } else if (request.message === 'fromContentScriptToBackground:addRefbib') {
+  } else if (request.message === 'fromGluttonLinkInserterToBackground:addRefbib') {
     return chrome.tabs.sendMessage(sender.tab.id, {
       'message': 'fromBackgroundToContentScript:addRefbib',
       'data': request.data
@@ -96,9 +228,23 @@ chrome.runtime.onConnect.addListener(function(port) {
     if (!isContentTypeAllowed(page.contentType) || !isWhiteListed(port.sender.url)) return;
     chrome.tabs.executeScript(port.sender.tab.id, { file: '/vendors/lz-string.js' });
     chrome.tabs.executeScript(port.sender.tab.id, { file: '/content_scripts/log.js' });
-    chrome.tabs.executeScript(port.sender.tab.id, { file: '/content_scripts/main.js' });
   });
 });
+
+function callGluttonLookup(url, gluttonId, cb) {
+  return $.get(url)
+    .done(function(res) {
+      res.gluttonId = gluttonId;
+      return cb(false, res);
+    })
+    .fail(function(res) {
+      let msg =
+        res.status > 0
+          ? res.status + ' : ' + res.statusText
+          : 'Unable to send request to : ' + url + '. Service not responding.';
+      return cb(true, msg);
+    });
+}
 
 function isContentTypeAllowed(contentType) {
   var forbidenContentTypes = [/application\/(\w+\+)?xml/, /text\/xml/];

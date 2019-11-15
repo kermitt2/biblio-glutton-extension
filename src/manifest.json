@@ -30,7 +30,7 @@
     "default_popup": "popup/popup.html"
   },
   "background": {
-    "scripts": ["background/postInstall.js", "vendors/jquery-3.2.1.js", "background/tabBootstrap.js"],
+    "scripts": ["vendors/jquery-3.2.1.js", "shared/default_options.js", "background/postInstall.js", "background/tabBootstrap.js"],
     "persistent": false
   },
   "options_ui": {
@@ -43,10 +43,12 @@
     ],
     "js": [
       "vendors/jquery-3.2.1.js",
+      "shared/default_options.js",
+      "content_scripts/GluttonLinkInserter.js",
       "content_scripts/tabBootstrap.js"
     ],
     "css": [
-      "content_scripts/main.css"
+      "content_scripts/GluttonLinkInserter.css"
     ]
   }]
 }

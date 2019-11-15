@@ -2,13 +2,18 @@
  * @prettier
  */
 'use strict';
+
 if (typeof browser !== 'undefined')
   browser.storage.local.get().then(function(settings) {
+    GluttonLinkInserter.config(settings);
+    setTimeout(GluttonLinkInserter.onDOMContentLoaded, 0);
     return doTheJob(settings);
   });
 else
   chrome.storage.local.get(null, function(settings) {
     if (chrome.runtime.lastError) console.log('error chrome.storage.local.get', chrome.runtime.lastError);
+    GluttonLinkInserter.config(settings);
+    setTimeout(GluttonLinkInserter.onDOMContentLoaded, 0);
     return doTheJob(settings);
   });
 
@@ -20,7 +25,9 @@ function doTheJob(settings) {
       'contentType': window.document.contentType
     };
 
-  let processCitationUrl = settings.GROBID_URL + '/processCitation', // http://localhost:8070/api
+  let processCitationUrl = settings.GROBID_URL + '/processCitation',
+    processHeaderDocumentUrl = settings.GROBID_URL + '/processHeaderDocument',
+    referenceAnnotationsUrl = settings.GROBID_URL + '/referenceAnnotations',
     lookupUrl = settings.GLUTTON_URL + '/lookup';
 
   port.postMessage(page);
@@ -48,11 +55,12 @@ function doTheJob(settings) {
 
   // Listeners
   chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+    console.log(request);
     // Send selection to GROBID services
     if (request.message === 'fromContextMenusToContentScript:resolve') {
       let selection = window.getSelection(),
         target = getCommonParent(selection.focusNode, selection.anchorNode),
-        gluttonId = Object.keys(refbibs).length.toString();
+        gluttonId = GluttonLinkInserter.newGluttonLinkId();
       if (typeof refbibs[gluttonId] === 'undefined') refbibs[gluttonId] = {};
       Object.assign(refbibs[gluttonId], { 'text': selection.toString() });
       targets[gluttonId] = target;
@@ -69,6 +77,10 @@ function doTheJob(settings) {
           'gluttonId': gluttonId
         }
       });
+      // Get result from background (GROBID processHeaderDocument result)
+    } else if (request.message === 'fromBackgroundToContentScript:processHeaderDocument') {
+      // Get result from background (GROBID referenceAnnotations result)
+    } else if (request.message === 'fromBackgroundToContentScript:referenceAnnotations') {
       // Get result from background (GROBID processCitation result)
     } else if (request.message === 'fromBackgroundToContentScript:resolve') {
       if (!request.data.err) {
@@ -81,7 +93,7 @@ function doTheJob(settings) {
             request.data.res.gluttonId
           )
         );
-      } else console.log(request.data);
+      } else alert(request.data.res);
       // Cite
     } else if (request.message === 'fromContextMenusToContentScript:cite') {
       if (gluttonLinkClicked !== null) {
@@ -90,7 +102,8 @@ function doTheJob(settings) {
           return chrome.runtime.sendMessage({
             'message': 'fromContentScriptToBackground:resolve',
             'data': {
-              'url': processCitationUrl,
+              'processCitationUrl': processCitationUrl,
+              'lookupUrl': lookupUrl,
               'method': 'POST',
               'data': {
                 'citations': gluttonLinkClicked
@@ -112,7 +125,6 @@ function doTheJob(settings) {
       return selectRefbib(request.data.gluttonId);
       // Add refbib into refbibs
     } else if (request.message === 'fromBackgroundToContentScript:addRefbib') {
-      console.log('addRefbib');
       refbibs[request.data.gluttonId] = request.data;
       return;
       // Build refbibs list & send it to popup
@@ -126,14 +138,25 @@ function doTheJob(settings) {
             'text': getRefbibId(refbib)
           });
       }
-      console.log(refbibs);
-      console.log(result);
       return chrome.runtime.sendMessage({ 'message': 'fromContentScriptToPopup:gluttonList', 'data': result });
       // Add refbib into refbibs
     } else if (request.message === 'fromPopupToContentScript:grobidBtn') {
       return chrome.runtime.sendMessage({
         'message': 'fromContentScriptToPopup:grobidBtn',
         'data': page.contentType === 'application/pdf'
+      });
+    } else if (request.message === 'fromPopupToContentScript:referenceAnnotations') {
+      return chrome.runtime.sendMessage({
+        'message': 'fromContentScriptToBackground:referenceAnnotations',
+        'data': {
+          'processHeaderDocumentUrl': processHeaderDocumentUrl,
+          'referenceAnnotationsUrl': referenceAnnotationsUrl,
+          'lookupUrl': lookupUrl,
+          'gluttonId': GluttonLinkInserter.newGluttonLinkId(),
+          'method': 'POST',
+          'input': window.location.href,
+          'dataType': 'json'
+        }
       });
     }
   });

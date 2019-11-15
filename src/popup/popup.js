@@ -1,6 +1,7 @@
 /*
  * @prettier
  */
+'use strict';
 
 let openTabQuery = { 'active': true, 'currentWindow': true };
 
@@ -17,17 +18,17 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   else if (request.message === 'fromContentScriptToPopup:grobidBtn') return buildGrobidBtn(request.data);
 });
 
-function onOpened() {
-  console.log(`Options page opened`);
-}
-
-function onError(error) {
-  console.log(`Error: ${error}`);
-}
-
 $('#preferences').click(function() {
-  let opening = chrome.runtime.openOptionsPage();
-  opening.then(onOpened, onError);
+  return chrome.runtime.openOptionsPage(function() {
+    if (chrome.runtime.lastError) alert('error chrome.runtime.openOptionsPage', chrome.runtime.lastError);
+    console.log('Options page opened');
+  });
+});
+
+$('#grobid').click(function() {
+  chrome.tabs.query(openTabQuery, function(tabs) {
+    chrome.tabs.sendMessage(tabs[0].id, { 'message': 'fromPopupToContentScript:referenceAnnotations' });
+  });
 });
 
 function defaultCallback(res) {

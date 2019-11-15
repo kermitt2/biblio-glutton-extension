@@ -4,9 +4,45 @@
 /* globals LZString, warn, error, debug, logXhrError */
 'use strict';
 
-var config,
-  GluttonLinkInserter,
-  NOT_AVAILABLE = 'NA';
+let parents = {};
+
+// Listeners
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+  // Result of lookup service
+  if (request.message === 'fromBackgroundToGluttonLinkInserter:lookup') {
+    if (request.err) {
+      if (request.res.textStatus === 'timeout') {
+        logXhrError(request.res, request.res.errorThrown);
+        info('Retry: ', request.res.url);
+        // Todo fix the async behavior using callback style for element creation
+        parents[request.res.gluttonId] &&
+          parents[request.res.gluttonId].parentNode &&
+          parents[request.res.gluttonId].parentNode.removeChild(parent);
+      }
+    } else {
+      parents[request.res.gluttonId] &&
+        request.res.oaLink &&
+        parents[request.res.gluttonId].appendChild(GluttonLinkInserter.createLink(request.res.oaLink));
+      parents[request.res.gluttonId] &&
+        request.res.istexLink &&
+        parents[request.res.gluttonId].appendChild(GluttonLinkInserter.createLink(request.res.istexLink, 'istex'));
+      if (parent && (request.res.istexLink || request.res.oaLink)) {
+        chrome.runtime.sendMessage({
+          'message': 'fromGluttonLinkInserterToBackground:addRefbib',
+          'data': {
+            'gluttonId': request.res.gluttonId,
+            'oaLink': request.res.oaLink,
+            'istexLink': request.res.istexLink
+          }
+        });
+        parents[request.res.gluttonId].setAttribute('gluttonId', request.res.gluttonId);
+        parents[request.res.gluttonId].appendChild(GluttonLinkInserter.createGluttonId(request.res.gluttonId));
+      }
+    }
+  }
+});
+
+var GluttonLinkInserter;
 const forbidenElements = [
   'applet',
   'area',
@@ -51,19 +87,17 @@ const forbidenElements = [
   'rect'
 ];
 
-config = {
-  'gluttonBaseURL': 'cloud.science-miner.com/glutton/service',
-  'maxPageLinks': 2500,
-  'mustDebug': false
-};
-
 GluttonLinkInserter = {
+  'maxPageLinks': 2500,
+  'mustDebug': false,
   'config': function(settings) {
+    GluttonLinkInserter.lastGluttonId = 0;
     // OpenURL static info
     //openUrlVersion: 'Z39.88-2004',
     GluttonLinkInserter.gluttonService =
       typeof settings.SHOW_ISTEX !== 'undefined' && settings.SHOW_ISTEX ? 'oa_istex' : 'oa';
     GluttonLinkInserter.gluttonPrefix = settings.GLUTTON_URL + '/';
+    GluttonLinkInserter.gluttonBaseURL = settings.GLUTTON_URL;
 
     // DOI pattern
     GluttonLinkInserter.doiPattern = /\/\/((dx\.)?doi\.org|doi\.acm\.org|dx\.crossref\.org).*\/(10\..*(\/|%2(F|f)).*)/;
@@ -102,6 +136,10 @@ GluttonLinkInserter = {
     };
 
     GluttonLinkInserter.scopusExternalLinkPrefix = 'www.scopus.com/redirect/linking.uri?targetURL=';
+  },
+
+  'newGluttonLinkId': function() {
+    return GluttonLinkInserter.lastGluttonId++;
   },
 
   'onDOMContentLoaded': function() {
@@ -283,7 +321,7 @@ GluttonLinkInserter = {
     // Detect OpenURL, DOI or PII links not already handled in the code above and replace them with our custom links
     var links = domNode.getElementsByTagName('a');
 
-    if (links.length > config.maxPageLinks) {
+    if (links.length > GluttonLinkInserter.maxPageLinks) {
       warn('Too many links for Glutton analyser:' + links.length);
       return;
     }
@@ -347,7 +385,7 @@ GluttonLinkInserter = {
     if (link.getAttribute('classname') === 'glutton-link') {
       return mask;
     }
-    if (href.indexOf(config.gluttonBaseURL) !== -1) {
+    if (href.indexOf(GluttonLinkInserter.gluttonBaseURL) !== -1) {
       return mask;
     }
 
@@ -397,7 +435,7 @@ GluttonLinkInserter = {
       }
     }
 
-    if (config.mustDebug && mask > 0) {
+    if (GluttonLinkInserter.mustDebug && mask > 0) {
       // debug('URL is ' + href + '\n mask value: ' + mask);
     }
 
@@ -564,37 +602,15 @@ GluttonLinkInserter = {
 
     var requestUrl = encodeURI(GluttonLinkInserter.gluttonPrefix + href);
 
-    $.ajax({
-      url: requestUrl,
-      timeout: 16000,
-      tryCount: 0,
-      maxRetry: 1,
-      success: function(data) {
-        parent && data.oaLink && parent.appendChild(GluttonLinkInserter.createLink(data.oaLink));
-        parent && data.istexLink && parent.appendChild(GluttonLinkInserter.createLink(data.istexLink, 'istex'));
-        if (parent && (data.istexLink || data.oaLink)) {
-          let gluttonId = document.querySelectorAll('span[gluttonId]').length;
-          chrome.runtime.sendMessage({
-            'message': 'fromContentScriptToBackground:addRefbib',
-            'data': {
-              'gluttonId': gluttonId,
-              'oaLink': data.oaLink,
-              'istexLink': data.istexLink
-            }
-          });
-          parent.setAttribute('gluttonId', gluttonId);
-          parent.appendChild(GluttonLinkInserter.createGluttonId(gluttonId));
-        }
-      },
-      error: function(jqXHR, textStatus, errorThrown) {
-        logXhrError(requestUrl, errorThrown);
-        if (textStatus === 'timeout' && this.tryCount < this.maxRetry) {
-          info('Retry: ', this.url);
-          this.tryCount++;
-          return $.ajax(this);
-        }
-        // Todo fix the async behavior using callback style for element creation
-        parent && parent.parentNode && parent.parentNode.removeChild(parent);
+    let gluttonId = GluttonLinkInserter.newGluttonLinkId();
+
+    parents[gluttonId] = parent;
+
+    chrome.runtime.sendMessage({
+      'message': 'fromGluttonLinkInserterToBackground:lookup',
+      'data': {
+        'gluttonId': gluttonId,
+        'url': requestUrl
       }
     });
   },
@@ -680,15 +696,3 @@ GluttonLinkInserter = {
     return obj;
   }
 };
-
-if (typeof browser !== 'undefined')
-  browser.storage.local.get().then(function(settings) {
-    GluttonLinkInserter.config(settings);
-    setTimeout(GluttonLinkInserter.onDOMContentLoaded, 0);
-  });
-else
-  chrome.storage.local.get(null, function(settings) {
-    if (chrome.runtime.lastError) console.log('error chrome.storage.local.get', chrome.runtime.lastError);
-    GluttonLinkInserter.config(settings);
-    return setTimeout(GluttonLinkInserter.onDOMContentLoaded, 0);
-  });
