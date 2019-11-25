@@ -63,6 +63,8 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
       },
       result
     );
+  } else if (request.message === 'fromGluttonLinkInserterToBackground:openTab') {
+    return chrome.tabs.create({ 'url': request.data.url });
   } else if (request.message === 'fromContentScriptToBackground:parseReference') {
     let response = buildResponse(request.message),
       result = { 'refbib': { 'gluttonId': request.data.gluttonId } };
@@ -307,6 +309,7 @@ function buildUrl(baseUrl, parameters) {
           if (parameters[keys[i]]) result += '&' + keys[i] + '=' + parameters[keys[i]];
         }
       }
+      result += '&sid=glutton-browser-addon';
     }
   }
   return encodeURI(result);

@@ -16,7 +16,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
       return logXhrError(request.data.res.error.url, request.data.res.error.errorThrown);
     }
     let refbib = GluttonLinkInserter.refbibs.update(request.data.res.refbib.gluttonId, request.data.res.refbib);
-    if (refbib.buttons) GluttonLinkInserter.addButtons(refbib);
+    if (refbib.buttons) GluttonLinkInserter.addButtons(refbib, false);
   }
 });
 
@@ -105,15 +105,16 @@ GluttonLinkInserter = {
       return Object.keys(GluttonLinkInserter.refbibs.data).length;
     }
   },
-  'addButtons': function(refbib) {
+  'addButtons': function(refbib, defaultBtn = true) {
     // Add Id to buttons
     refbib.buttons.setAttribute('gluttonId', refbib.gluttonId);
     refbib.buttons.innerHTML = '';
-    // Add glutton Link
-    refbib.buttons.appendChild(
-      GluttonLinkInserter.createLink(refbib.gluttonId, typeof refbib.oaLink !== 'undefined' ? refbib.oaLink : '')
-    );
+    // Add default glutton Link
+    if (defaultBtn && typeof refbib.oaLink === 'undefined')
+      refbib.buttons.appendChild(GluttonLinkInserter.createLink(refbib.gluttonId));
     // Add Istex Link
+    typeof refbib.oaLink !== 'undefined' &&
+      refbib.buttons.appendChild(GluttonLinkInserter.createLink(refbib.gluttonId, refbib.oaLink));
     typeof refbib.istexLink !== 'undefined' &&
       refbib.buttons.appendChild(GluttonLinkInserter.createLink(refbib.gluttonId, refbib.istexLink, 'istex'));
     // Add Glutton Id
@@ -589,7 +590,7 @@ GluttonLinkInserter = {
     return span;
   },
 
-  'createLink': function(id, resourceUrl, text = 'glutton') {
+  'createLink': function(id, resourceUrl = '', text = 'glutton') {
     // set the added link, this will avoid an extra call to the OpenURL API and fix the access url
     var a = document.createElement('a');
     //a.href        = resourceUrl.replace('/original', '/pdf')
@@ -603,9 +604,14 @@ GluttonLinkInserter = {
     a.rel = 'noopener noreferrer';
     $(a).click(function(event) {
       event.preventDefault();
+      GluttonLinkInserter.refbibs.current = GluttonLinkInserter.refbibs.getData(id);
+      if (resourceUrl)
+        chrome.runtime.sendMessage({
+          'message': 'fromGluttonLinkInserterToBackground:openTab',
+          'data': { 'url': resourceUrl }
+        });
       if (typeof browser !== 'undefined' && typeof browser.browserAction !== 'undefined')
         return browser.browserAction.openPopup();
-      GluttonLinkInserter.refbibs.current = GluttonLinkInserter.refbibs.getData(id);
     });
     $(a).contextmenu(function(event) {
       GluttonLinkInserter.refbibs.current = GluttonLinkInserter.refbibs.getData(id);
