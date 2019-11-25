@@ -11,12 +11,17 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     request.message === 'fromBackgroundToGluttonLinkInserter:oa/oa_istex' ||
     request.message === 'fromBackgroundToGluttonLinkInserter:lookup'
   ) {
-    if (request.data.err) {
-      GluttonLinkInserter.refbibs.remove(request.data.res.refbib.gluttonId);
-      return logXhrError(request.data.res.error.url, request.data.res.error.errorThrown);
+    if (
+      request.data.err ||
+      (typeof request.data.res.refbib.oaLink === 'undefined' &&
+        typeof request.data.res.refbib.istexLink === 'undefined')
+    ) {
+      if (request.data.err) logXhrError(request.data.res.error.url, request.data.res.error.errorThrown);
+      return GluttonLinkInserter.refbibs.remove(request.data.res.refbib.gluttonId);
+    } else {
+      let refbib = GluttonLinkInserter.refbibs.update(request.data.res.refbib.gluttonId, request.data.res.refbib);
+      if (refbib.buttons) GluttonLinkInserter.addButtons(refbib, false);
     }
-    let refbib = GluttonLinkInserter.refbibs.update(request.data.res.refbib.gluttonId, request.data.res.refbib);
-    if (refbib.buttons) GluttonLinkInserter.addButtons(refbib, false);
   }
 });
 
