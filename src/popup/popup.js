@@ -3,139 +3,174 @@
  */
 'use strict';
 
-let openTabQuery = { 'active': true, 'currentWindow': true };
-
-window.onload = function() {
-  chrome.tabs.query(openTabQuery, function(tabs) {
-    $('#debug').text('#' + tabs[0].id + ' - ' + new Date().toLocaleString());
-  });
-  refreshGluttonList();
-  refreshGrobidBtn();
-};
-
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-  if (request.message === 'fromContentScriptToPopup:gluttonList') return buildGluttonList(request.data);
-  else if (request.message === 'fromContentScriptToPopup:grobidBtn') return buildGrobidBtn(request.data);
-});
-
-$('#preferences').click(function() {
-  return chrome.runtime.openOptionsPage(function() {
-    if (chrome.runtime.lastError) alert('error chrome.runtime.openOptionsPage', chrome.runtime.lastError);
-    console.log('Options page opened');
-  });
-});
-
-$('#grobid').click(function() {
-  chrome.tabs.query(openTabQuery, function(tabs) {
-    chrome.tabs.sendMessage(tabs[0].id, { 'message': 'fromPopupToContentScript:referenceAnnotations' });
-  });
-});
-
-function defaultCallback(res) {
-  alert(res);
-}
-
-function refreshGrobidBtn() {
-  chrome.tabs.query(openTabQuery, function(tabs) {
-    chrome.tabs.sendMessage(tabs[0].id, { 'message': 'fromPopupToContentScript:grobidBtn' });
-  });
-}
-
-function refreshGluttonList() {
-  chrome.tabs.query(openTabQuery, function(tabs) {
-    chrome.tabs.sendMessage(tabs[0].id, { 'message': 'fromPopupToContentScript:gluttonList' });
-  });
-}
-
-function setInfos(item) {
-  let container = $('#glutton-list-selected-item-data'),
-    keys = Object.keys(item);
-  container.empty();
-  for (var i = 0; i < keys.length; i++) {
-    if (typeof item[keys[i]] !== 'undefined') {
-      let row = $('<div>').addClass('data-row'),
-        key = $('<div>')
-          .addClass('key')
-          .text(keys[i]),
-        value;
-      if (isLink(keys[i])) value = createLink(item[keys[i]]);
-      else
-        value = $('<div>')
-          .addClass('value')
-          .text(item[keys[i]]);
-
-      row.append(key).append(value);
-      container.append(row);
+let openTabQuery = { 'active': true, 'currentWindow': true },
+  dataView = {
+    'keys': ['atitle', 'firstAuthor', 'oaLink', 'istexLink'],
+    'data': {
+      'atitle': { 'label': 'Title', 'type': 'text' },
+      'firstAuthor': { 'label': 'First Author', 'type': 'text' },
+      'istexLink': { 'label': 'ISTEX', 'type': 'href' },
+      'oaLink': { 'label': 'Open Access', 'type': 'href' },
+      'gluttonId': { 'label': 'GluttonId', 'type': 'text' }
     }
-  }
-}
+  },
+  currentRefbib = undefined;
 
-function buildGrobidBtn(state) {
-  if (state) $('#grobid').css('display', 'block');
-  else $('#grobid').css('display', 'none');
-}
-
-function buildGluttonList(items) {
-  $('#popup-body #glutton-list-selected-item').css('display', 'none');
-  $('#popup-body #glutton-list-data').empty();
-  if (items.length === 0) {
-    $('#popup-body #glutton-list-no-data').css('display', 'block');
-    $('#popup-body #glutton-list-data').css('display', 'none');
-  } else {
-    $('#popup-body #glutton-list-no-data').css('display', 'none');
-    $('#popup-body #glutton-list-data').css('display', 'block');
-    let list = $('<ul>');
-    for (var i = 0; i < items.length; i++) {
-      list.append(createItem(items[i], list));
-    }
-    $('#popup-body #glutton-list-data').append(list);
-  }
-}
-
-function isLink(key) {
-  return key === 'istexLink' || key === 'oaLink' || key === 'URL';
-}
-
-function createLink(href) {
-  return $('<a>')
-    .attr('href', href)
-    .text(href)
-    .addClass('value');
-}
-
-function createItem(item, list) {
-  let searchBtn = $('<i>').addClass('fas fa-search'),
-    data = $('<div>').text(item.id + ' - ' + item.text),
-    result = $('<li>')
-      .attr('gluttonId', item.id)
-      .append(data)
-      .append(searchBtn);
-  searchBtn.click(function() {
-    chrome.tabs.query(openTabQuery, function(tabs) {
-      chrome.tabs.sendMessage(tabs[0].id, {
-        'message': 'fromPopupToContentScript:selectRefbib',
-        'data': { 'gluttonId': result.attr('gluttonId') }
+$(document).ready(function() {
+  return chrome.tabs.query(openTabQuery, function(tabs) {
+    // Click on preferences button
+    $('#settings').click(function() {
+      return chrome.runtime.openOptionsPage(function() {
+        if (chrome.runtime.lastError) alert('error chrome.runtime.openOptionsPage', chrome.runtime.lastError);
+        console.log('Options page opened');
       });
     });
+
+    // Click on processPdf button
+    $('#processPdf').click(function() {
+      return chrome.tabs.sendMessage(tabs[0].id, { 'message': 'fromPopupToContentScript:processPdf' });
+    });
+
+    // Click on openUrl button
+    $('#openUrl').click(function() {
+      return chrome.tabs.create({ 'url': currentRefbib.oaLink });
+    });
+
+    // Click on cite button
+    $('#processCite').click(function() {
+      let citeType = $('#citeType > input:checked')
+        .first()
+        .attr('value');
+      return buildCite(citeType, currentRefbib);
+    });
+
+    // Click on copy button
+    $('#processCopy').click(function() {
+      return copyClipboard($('#citeString > input').val());
+    });
+
+    $('#debug').text('#' + tabs[0].id + ' - ' + new Date().toLocaleString());
+
+    return chrome.tabs.sendMessage(tabs[0].id, { 'message': 'fromPopupToContentScript:refreshGluttonUI' });
   });
-  data.click(function() {
-    if (!result.hasClass('selected')) {
-      let list = $('#glutton-list-data');
-      $('#glutton-list-data .selected').removeClass('selected');
-      result.addClass('selected', true);
-      list.animate(
-        {
-          scrollTop: list.scrollTop() + (result.offset().top - list.offset().top) - (result.height() * 1.5 + 3)
-        },
-        500
-      );
-      setInfos(item.data);
-      $('#cite-bibtex').attr('gluttonid', item.id);
-      $('#glutton-list-selected-item').css('display', 'block');
-    } else {
-      $('#glutton-list-data .selected').removeClass('selected');
-      $('#glutton-list-selected-item').css('display', 'none');
+});
+
+// listeners
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+  console.log(request, sender);
+  if (request.message === 'fromContentScriptToPopup:refreshGluttonUI') return refreshGluttonUI(request.data);
+  else if (request.message === 'fromContentScriptToPopup:refreshRefbibsCount') return refreshRefbibsCount(request.data);
+  else if (request.message === 'fromContentScriptToPopup:refreshProcessPdfButton')
+    return refreshProcessPdfButton(request.data);
+  else if (request.message === 'fromContentScriptToPopup:refreshOpenUrl') return refreshOpenUrl(request.data);
+  else if (request.message === 'fromContentScriptToPopup:refreshRefbib') return refreshRefbib(request.data);
+});
+
+// Refresh refbib data values
+function refreshRefbib(refbib) {
+  currentRefbib = refbib;
+  return setRefbib(currentRefbib);
+}
+
+// Refresh openUrl button state
+function refreshOpenUrl(state) {
+  if (state) $('#openUrl').show();
+  else $('#openUrl').hide();
+  if (typeof state !== 'undefined') return $('#openUrl').attr('disabled', !state);
+}
+
+// Refresh processPdf button state
+function refreshProcessPdfButton(state) {
+  if (state) $('#processPdf').show();
+  else $('#processPdf').hide();
+  if (typeof state !== 'undefined') return $('#processPdf').attr('disabled', !state);
+}
+
+// Refresh refbibs count value
+function refreshRefbibsCount(count) {
+  if (typeof count !== 'undefined') return $('#refbibs-count').text(count);
+}
+
+// Refresh refbib cite div
+function refreshRefbibCite(state) {
+  if (state) {
+    $('#popup-footer').show();
+    $('#processCite').show();
+  } else {
+    $('#popup-footer').hide();
+    $('#processCite').hide();
+  }
+  if (typeof state !== 'undefined') return $('#processCite').attr('disabled', !state);
+}
+
+// Refresh Glutton UI
+function refreshGluttonUI(data) {
+  let checkData = typeof data === 'object' && data,
+    checkRefbib = checkData && typeof data.refbib === 'object' && data.refbib,
+    count = checkData && typeof data.refbibs === 'object' && data.refbibs ? data.refbibs.count : undefined,
+    oaLink = checkData && checkRefbib ? data.refbib.oaLink : undefined,
+    processPdf = checkData ? data.processPdf : undefined,
+    refbib = checkData && checkRefbib ? data.refbib : undefined;
+  // console.log(count, oaLink, processPdf, refbib);
+  refreshRefbibsCount(count);
+  refreshOpenUrl(oaLink);
+  refreshProcessPdfButton(processPdf);
+  refreshRefbib(refbib);
+  refreshRefbibCite(refbib && refbib.publisher);
+}
+
+// Set refbib values into popup HTML
+function setRefbib(refbib) {
+  let container = $('#refbib');
+  if (typeof refbib === 'undefined') {
+    container.text('Click on glutton button to show details');
+    return $('#popup-footer').hide();
+  }
+  container.empty();
+  $('#popup-footer').show();
+  for (let i = 0; i < dataView.keys.length; i++) {
+    let key = dataView.keys[i];
+    if (typeof refbib[key] !== 'undefined' && refbib[key] !== null)
+      container.append(buildData(dataView.data[key], refbib[key]));
+  }
+  if (container.find('.data-row').length === 0) container.text('There is no data available');
+}
+
+// Build HTML representation of data
+function buildData(key, value) {
+  let container = $('<div>').addClass('data-row'),
+    keyDiv = buildElement('text', key.label, 'key'),
+    valueDiv = buildElement(key.type, value, 'value');
+  return container.append(keyDiv).append(valueDiv);
+}
+
+// build an element
+function buildElement(type, value, className) {
+  if (type === 'text')
+    return $('<div>')
+      .addClass(className)
+      .text(value);
+  else if (type === 'href')
+    return $('<a>')
+      .addClass(className)
+      .attr('href', value)
+      .text(value);
+}
+
+// Build cite
+function buildCite(citeType, refbib) {
+  let txt = CITE[citeType](refbib);
+  return $('#citeString > input').val(txt);
+}
+
+// Copy to to clipboard the given text
+function copyClipboard(text) {
+  navigator.clipboard.writeText(text).then(
+    function() {
+      alert('Text copied in the clipboard');
+    },
+    function() {
+      alert('Copy in clipboard failed');
     }
-  });
-  return result;
+  );
 }

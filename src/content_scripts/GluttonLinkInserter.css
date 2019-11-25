@@ -1,3 +1,7 @@
+[class^="gs"] > a[name="GluttonLink"] {
+    margin-left: 0;
+}
+
 a[name="GluttonLink"].glutton-link {
     margin:              2px 5px 2px 5px;
     padding:             2px;
@@ -14,10 +18,6 @@ a[name="GluttonLink"].glutton-link {
     color:               white !important;
     font-weight:         bold;
     border-radius:       5px;
-}
-
-[class^="gs"] > a[name="GluttonLink"] {
-    margin-left: 0;
 }
 
 a[name="GluttonLink"].glutton-link:hover {
@@ -37,86 +37,81 @@ a[name="GluttonLink"].glutton-link:active {
     color:               white;
     font-weight:         bold;
 }
+a[name="GluttonLink"].glutton-link.istex {
+    margin:              2px 5px 2px 5px;
+    padding:             2px;
+    width:               60px;
+    border:              1px solid;
+    border-top-color:    #5c9ab0;
+    border-left-color:   #5c9ab0;
+    border-bottom-color: #000;
+    border-right-color:  #000;
+    background:          #458ca5 !important;
+    text-align:          center;
+    text-decoration:     none !important;
+    font:                normal 10px Verdana;
+    color:               white !important;
+    font-weight:         bold;
+    border-radius:       5px;
+}
+
+a[name="GluttonLink"].glutton-link.istex:hover {
+    text-decoration: none !important;
+    color:           white !important;
+    background:      #5c9ab0 !important;
+    font-weight:     bold;
+}
+
+a[name="GluttonLink"].glutton-link.istex:active {
+    border-top-color:    #000;
+    border-left-color:   #000;
+    border-bottom-color: #458ca5;
+    border-right-color:  #458ca5;
+    background:          #5c9ab0;
+    text-decoration:     none !important;
+    color:               white;
+    font-weight:         bold;
+}
 
 a[name="GluttonLink"].glutton-link-disabled {
     margin:              2px 5px 2px 5px;
     padding:             2px;
     width:               60px;
     border:              1px solid;
-    border-top-color:    red;
-    border-left-color:   red;
-    border-bottom-color: #000;
-    border-right-color:  #000;
-    background:          #DC143C !important;
+    border-top-color:    darkgray;
+    border-left-color:   darkgray;
+    border-bottom-color: black;
+    border-right-color:  black;
+    background:          white !important;
     text-align:          center;
     text-decoration:     none !important;
     font:                normal 10px Verdana;
-    color:               white !important;
+    /*color:               #009933 !important;*/
+    color:               black !important;
     font-weight:         bold;
     border-radius:       5px;
 }
 
 a[name="GluttonLink"].glutton-link-disabled:hover {
     text-decoration: none !important;
+    /*color:           #00cc44 !important;*/
     color:           white !important;
-    background:      red !important;
+    background:      black !important;
     font-weight:     bold;
 }
 
 a[name="GluttonLink"].glutton-link-disabled:active {
-    border-top-color:    #000;
-    border-left-color:   #000;
-    border-bottom-color: red;
-    border-right-color:  red;
-    background:          #666;
+    border-top-color:    black;
+    border-left-color:   black;
+    border-bottom-color: darkgray;
+    border-right-color:  darkgray;
+    background:          black;
     text-decoration:     none !important;
-    color:               white;
-    font-weight:         bold;
-}
-
-a[name="GluttonLink"].glutton-cite {
-    margin:              2px 5px 2px 5px;
-    padding:             2px;
-    width:               60px;
-    border:              1px solid;
-    border-top-color:    dodgerblue;
-    border-left-color:   dodgerblue;
-    border-bottom-color: blue;
-    border-right-color:  blue;
-    background:          cornflowerblue !important;
-    text-align:          center;
-    text-decoration:     none !important;
-    font:                normal 10px Verdana;
+    /*color:               #009933 !important;*/
     color:               white !important;
-    font-weight:         bold;
-    border-radius:       5px;
-}
-
-a[name="GluttonLink"].glutton-cite:hover {
-    text-decoration: none !important;
-    color:           white !important;
-    background:      dodgerblue !important;
-    font-weight:     bold;
-}
-
-a[name="GluttonLink"].glutton-cite:active {
-    border-top-color:    blue;
-    border-left-color:   blue;
-    border-bottom-color: dodgerblue;
-    border-right-color:  dodgerblue;
-    background:          dodgerblue;
-    text-decoration:     none !important;
-    color:               white;
     font-weight:         bold;
 }
 
 span[gluttonid] sup {
     color: #009933;
-}
-
-.glutton-selected {
-    background-color: yellow !important;
-    border:           1px solid black !important;
-    padding-top:      10px;
-    padding-bottom:   10px;
 }

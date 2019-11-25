@@ -9,16 +9,14 @@ function saveOptions(e) {
     glutton = $('#glutton-url');
   grobid.val(grobid.val().replace(/\/+$/, '')); // remove last slash(es)
   glutton.val(glutton.val().replace(/\/+$/, '')); // remove last slash(es)
-  chrome.storage.local.set(
-    {
-      'SHOW_ISTEX': $('#show-istex').is(':checked'),
-      'GROBID_URL': $('#grobid-url').val() || DEFAULT_OPTIONS.GROBID_URL,
-      'GLUTTON_URL': $('#glutton-url').val() || DEFAULT_OPTIONS.GLUTTON_URL
-    },
-    function() {
-      if (chrome.runtime.lastError) alert('error chrome.storage.local.set', chrome.runtime.lastError);
-    }
-  );
+  let data = {
+    'SHOW_ISTEX': $('#show-istex').is(':checked'),
+    'GROBID_URL': $('#grobid-url').val() || DEFAULT_OPTIONS.GROBID_URL,
+    'GLUTTON_URL': $('#glutton-url').val() || DEFAULT_OPTIONS.GLUTTON_URL
+  };
+  chrome.storage.local.set(data, function() {
+    if (chrome.runtime.lastError) alert('error chrome.storage.local.set', chrome.runtime.lastError);
+  });
 }
 
 document.addEventListener('DOMContentLoaded', function() {

@@ -30,7 +30,7 @@
     "default_popup": "popup/popup.html"
   },
   "background": {
-    "scripts": ["vendors/jquery-3.2.1.js", "shared/default_options.js", "background/postInstall.js", "background/tabBootstrap.js"],
+    "scripts": ["vendors/jquery-3.2.1.js", "shared/default_options.js", "background/services.js", "background/postInstall.js", "background/tabBootstrap.js"],
     "persistent": false
   },
   "options_ui": {
@@ -43,6 +43,8 @@
     ],
     "js": [
       "vendors/jquery-3.2.1.js",
+      "/vendors/lz-string.js",
+      "/content_scripts/log.js",
       "shared/default_options.js",
       "content_scripts/GluttonLinkInserter.js",
       "content_scripts/tabBootstrap.js"

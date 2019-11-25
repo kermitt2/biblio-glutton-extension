@@ -15,8 +15,9 @@ function handleInstalled(details) {
     });
   }
 
-  return chrome.tabs.create({
-    url: chrome.runtime.getURL('/options/options.html')
+  return chrome.runtime.openOptionsPage(function() {
+    if (chrome.runtime.lastError) alert('error chrome.runtime.openOptionsPage', chrome.runtime.lastError);
+    console.log('Options page opened');
   });
 }
 

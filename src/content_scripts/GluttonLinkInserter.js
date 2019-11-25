@@ -4,41 +4,19 @@
 /* globals LZString, warn, error, debug, logXhrError */
 'use strict';
 
-let parents = {};
-
 // Listeners
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   // Result of lookup service
-  if (request.message === 'fromBackgroundToGluttonLinkInserter:lookup') {
-    if (request.err) {
-      if (request.res.textStatus === 'timeout') {
-        logXhrError(request.res, request.res.errorThrown);
-        info('Retry: ', request.res.url);
-        // Todo fix the async behavior using callback style for element creation
-        parents[request.res.gluttonId] &&
-          parents[request.res.gluttonId].parentNode &&
-          parents[request.res.gluttonId].parentNode.removeChild(parent);
-      }
-    } else {
-      parents[request.res.gluttonId] &&
-        request.res.oaLink &&
-        parents[request.res.gluttonId].appendChild(GluttonLinkInserter.createLink(request.res.oaLink));
-      parents[request.res.gluttonId] &&
-        request.res.istexLink &&
-        parents[request.res.gluttonId].appendChild(GluttonLinkInserter.createLink(request.res.istexLink, 'istex'));
-      if (parent && (request.res.istexLink || request.res.oaLink)) {
-        chrome.runtime.sendMessage({
-          'message': 'fromGluttonLinkInserterToBackground:addRefbib',
-          'data': {
-            'gluttonId': request.res.gluttonId,
-            'oaLink': request.res.oaLink,
-            'istexLink': request.res.istexLink
-          }
-        });
-        parents[request.res.gluttonId].setAttribute('gluttonId', request.res.gluttonId);
-        parents[request.res.gluttonId].appendChild(GluttonLinkInserter.createGluttonId(request.res.gluttonId));
-      }
+  if (
+    request.message === 'fromBackgroundToGluttonLinkInserter:oa/oa_istex' ||
+    request.message === 'fromBackgroundToGluttonLinkInserter:lookup'
+  ) {
+    if (request.data.err) {
+      GluttonLinkInserter.refbibs.remove(request.data.res.refbib.gluttonId);
+      return logXhrError(request.data.res.error.url, request.data.res.error.errorThrown);
     }
+    let refbib = GluttonLinkInserter.refbibs.update(request.data.res.refbib.gluttonId, request.data.res.refbib);
+    if (refbib.buttons) GluttonLinkInserter.addButtons(refbib);
   }
 });
 
@@ -90,8 +68,65 @@ const forbidenElements = [
 GluttonLinkInserter = {
   'maxPageLinks': 2500,
   'mustDebug': false,
+  'refbibs': {
+    'lastId': -1,
+    'data': {},
+    'current': undefined,
+    'new': function(data) {
+      GluttonLinkInserter.refbibs.lastId++;
+      if (typeof data === 'undefined') data = { 'gluttonId': GluttonLinkInserter.refbibs.lastId };
+      else data = $.extend(true, data, { 'gluttonId': GluttonLinkInserter.refbibs.lastId });
+      return GluttonLinkInserter.refbibs.set(GluttonLinkInserter.refbibs.lastId, data);
+    },
+    'get': function(id) {
+      return GluttonLinkInserter.refbibs.data[id];
+    },
+    'getData': function(id) {
+      // get a safe copy that can be send to background (remove jQuery & Html element)
+      return $.extend(true, {}, GluttonLinkInserter.refbibs.get(id), { 'buttons': null, 'target': null });
+    },
+    'setValue': function(id, key, value) {
+      if (typeof GluttonLinkInserter.refbibs.get(id) === 'undefined') return false;
+      GluttonLinkInserter.refbibs.data[id][key] = value;
+      return GluttonLinkInserter.refbibs.get(id);
+    },
+    'set': function(id, data) {
+      GluttonLinkInserter.refbibs.data[id] = data;
+      return GluttonLinkInserter.refbibs.get(id);
+    },
+    'update': function(id, data) {
+      if (typeof GluttonLinkInserter.refbibs.get(id) === 'undefined') return false;
+      return $.extend(true, GluttonLinkInserter.refbibs.get(id), data);
+    },
+    'remove': function(id) {
+      delete GluttonLinkInserter.refbibs.data[id];
+    },
+    'count': function() {
+      return Object.keys(GluttonLinkInserter.refbibs.data).length;
+    }
+  },
+  'addButtons': function(refbib) {
+    // Add Id to buttons
+    refbib.buttons.setAttribute('gluttonId', refbib.gluttonId);
+    refbib.buttons.innerHTML = '';
+    // Add glutton Link
+    refbib.buttons.appendChild(
+      GluttonLinkInserter.createLink(refbib.gluttonId, typeof refbib.oaLink !== 'undefined' ? refbib.oaLink : '')
+    );
+    // Add Istex Link
+    typeof refbib.istexLink !== 'undefined' &&
+      refbib.buttons.appendChild(GluttonLinkInserter.createLink(refbib.gluttonId, refbib.istexLink, 'istex'));
+    // Add Glutton Id
+    // refbib.buttons.appendChild(GluttonLinkInserter.createGluttonId(refbib.gluttonId));
+    if (typeof refbib.target !== 'undefined') $(refbib.target).append(refbib.buttons);
+  },
+  'createGluttonLinks': function(refbib) {
+    var span = document.createElement('span');
+    GluttonLinkInserter.refbibs.setValue(refbib.gluttonId, 'buttons', span);
+    GluttonLinkInserter.addButtons(refbib);
+    $(refbib.target).after(span);
+  },
   'config': function(settings) {
-    GluttonLinkInserter.lastGluttonId = 0;
     // OpenURL static info
     //openUrlVersion: 'Z39.88-2004',
     GluttonLinkInserter.gluttonService =
@@ -138,10 +173,6 @@ GluttonLinkInserter = {
     GluttonLinkInserter.scopusExternalLinkPrefix = 'www.scopus.com/redirect/linking.uri?targetURL=';
   },
 
-  'newGluttonLinkId': function() {
-    return GluttonLinkInserter.lastGluttonId++;
-  },
-
   'onDOMContentLoaded': function() {
     var rootElement = document.documentElement;
     // check if we have an html page
@@ -185,22 +216,22 @@ GluttonLinkInserter = {
         // text node found, do the replacement
         text = childNode.textContent;
         if (text) {
-          var matchDOI = text.match(this.regexDoiPatternConservative);
-          var matchPMID = text.match(this.regexPMIDPattern);
+          var matchDOI = text.match(GluttonLinkInserter.regexDoiPatternConservative);
+          var matchPMID = text.match(GluttonLinkInserter.regexPMIDPattern);
           if (matchDOI || matchPMID) {
             spanElm = document.createElement('span');
             spanElm.setAttribute('name', 'GluttonInserted');
 
             if (matchDOI) {
               spanElm.innerHTML = text.replace(
-                this.regexDoiPatternConservative,
+                GluttonLinkInserter.regexDoiPatternConservative,
                 '<a href="http://doi.org/$1" name="GluttonInserted">$1</a>'
               );
               text = spanElm.innerHTML;
             }
             if (matchPMID) {
               spanElm.innerHTML = text.replace(
-                this.regexPMIDPattern,
+                GluttonLinkInserter.regexPMIDPattern,
                 '<a href="http://www.ncbi.nlm.nih.gov/pubmed/$3" name="GluttonInserted">PubMed ID $3</a>'
               );
             }
@@ -209,23 +240,23 @@ GluttonLinkInserter = {
             text = spanElm.innerHTML;
             prefix = false;
           } else {
-            if (prefix && text.match(this.regexSuffixPMIDPattern)) {
+            if (prefix && text.match(GluttonLinkInserter.regexSuffixPMIDPattern)) {
               // debug('regexSuffixPMIDPattern: ' + text);
               spanElm = document.createElement('span');
               spanElm.setAttribute('name', 'GluttonInserted');
               spanElm.innerHTML = text.replace(
-                this.regexSuffixPMIDPattern,
+                GluttonLinkInserter.regexSuffixPMIDPattern,
                 "<a href='http://www.ncbi.nlm.nih.gov/pubmed/$1' name='GluttonInserted'>$1</a>"
               );
               domNode.replaceChild(spanElm, childNode);
               childNode = spanElm;
               text = spanElm.innerHTML;
               prefix = false;
-            } else if (text.match(this.regexPrefixPMIDPattern)) {
+            } else if (text.match(GluttonLinkInserter.regexPrefixPMIDPattern)) {
               // debug('regexPrefixPMIDPattern: ' + text);
               prefix = true;
             } else if (text.length > 0) {
-              if (!text.match(this.skipPattern)) {
+              if (!text.match(GluttonLinkInserter.skipPattern)) {
                 prefix = false;
               }
             }
@@ -233,7 +264,7 @@ GluttonLinkInserter = {
         }
       } else if (childNode.nodeType === 1) {
         // not a text node but an element node, we look forward
-        prefix = this.scanForDoiAndPubmedStrings(childNode, prefix);
+        prefix = GluttonLinkInserter.scanForDoiAndPubmedStrings(childNode, prefix);
       }
       i++;
     }
@@ -249,7 +280,7 @@ GluttonLinkInserter = {
   // &amp;rft.au=Cornog%2C+Robert&amp;rfr_id=info%3Asid%2Fen.wikipedia.org%3AHelium-3
   mapOpenURLToGlutton(url) {
     url = decodeURIComponent((url + '').replace(/\+/g, '%20'));
-    var params = this.getAllUrlParams(url);
+    var params = GluttonLinkInserter.getAllUrlParams(url);
 
     var newLink = '';
     var atitle = params['rft.atitle'];
@@ -316,7 +347,7 @@ GluttonLinkInserter = {
     // Only process valid domNodes:
     if (!domNode || !domNode.getElementsByTagName) return;
 
-    this.scanForDoiAndPubmedStrings(domNode, false);
+    GluttonLinkInserter.scanForDoiAndPubmedStrings(domNode, false);
 
     // Detect OpenURL, DOI or PII links not already handled in the code above and replace them with our custom links
     var links = domNode.getElementsByTagName('a');
@@ -328,7 +359,7 @@ GluttonLinkInserter = {
 
     for (var i = 0; i < links.length; i++) {
       var link = links[i];
-      var flags = this.analyzeLink(link);
+      var flags = GluttonLinkInserter.analyzeLink(link);
 
       if (flags === 0) {
         continue;
@@ -337,36 +368,36 @@ GluttonLinkInserter = {
       var href = decodeURIComponent(link.getAttribute('href'));
 
       // We have found an open url link:
-      if (flags === this.flags.HAS_OPEN_URL) {
+      if (flags === GluttonLinkInserter.flags.HAS_OPEN_URL) {
         log('We have found an open url link');
         // OpenURL (deactivated for the moment, we need to map the OpenURL to a valid Glutton query)
         //var newLink = mapOpenURLToGlutton(link);
-        //this.createOpenUrlLink(href, link);
-      } else if (flags === this.flags.DOI_ADDRESS) {
+        //GluttonLinkInserter.createOpenUrlLink(href, link);
+      } else if (flags === GluttonLinkInserter.flags.DOI_ADDRESS) {
         // doi as CrossRef link
-        this.createDoiLink(href, link);
-      } else if (flags === this.flags.DOI_ADDRESS_VARIA) {
+        GluttonLinkInserter.createDoiLink(href, link);
+      } else if (flags === GluttonLinkInserter.flags.DOI_ADDRESS_VARIA) {
         // doi in a non CrossRef form
-        this.createDoiLinkVaria(href, link);
-      } else if (flags === this.flags.GOOGLE_SCHOLAR_OPENURL) {
+        GluttonLinkInserter.createDoiLinkVaria(href, link);
+      } else if (flags === GluttonLinkInserter.flags.GOOGLE_SCHOLAR_OPENURL) {
         // (deactivated for the moment, in theory we would need to a google scholar library config with
         // Unpaywall resources and have the extension selecting this config automatically atextensiuon install,
         // similarly as how we did with ISTEX)
-        //this.createGoogleScholarLink(href, link);
-      } else if (flags === this.flags.PUBMED_ADDRESS) {
+        //GluttonLinkInserter.createGoogleScholarLink(href, link);
+      } else if (flags === GluttonLinkInserter.flags.PUBMED_ADDRESS) {
         // PubMed ID
-        this.createPubmedLink(href, link);
-      } else if (flags === this.flags.HAS_PII) {
+        GluttonLinkInserter.createPubmedLink(href, link);
+      } else if (flags === GluttonLinkInserter.flags.HAS_PII) {
         // Publisher Item Identifier, it's only for Elsevier ScienceDirect result page
-        this.createPIILink(href, link);
-      } else if (flags === this.flags.SCOPUS_DOI) {
+        GluttonLinkInserter.createPIILink(href, link);
+      } else if (flags === GluttonLinkInserter.flags.SCOPUS_DOI) {
         // scopus external publisher link
-        this.createScopusLink(href, link);
+        GluttonLinkInserter.createScopusLink(href, link);
       }
     }
 
     // COinS (deactivated for the moment, we need to map the OpenURL to a valid Glutton query)
-    this.createSpanBasedLinks(domNode);
+    GluttonLinkInserter.createSpanBasedLinks(domNode);
   },
 
   'analyzeLink': function(link) {
@@ -394,44 +425,44 @@ GluttonLinkInserter = {
     // for it (we would need to add one for Unpaywall in theory to have those Open Access links there)
     var contentText = link.textContent;
     if (href.indexOf('scholar.google.') !== -1 && contentText === '[PDF] ISTEX') {
-      mask = this.flags.GOOGLE_SCHOLAR_OPENURL;
+      mask = GluttonLinkInserter.flags.GOOGLE_SCHOLAR_OPENURL;
       //return mask;
-    } else if (href.indexOf(this.scopusExternalLinkPrefix) !== -1) {
+    } else if (href.indexOf(GluttonLinkInserter.scopusExternalLinkPrefix) !== -1) {
       // check scopus external publisher links
-      var simpleHref = href.replace('https://' + this.scopusExternalLinkPrefix, '');
+      var simpleHref = href.replace('https://' + GluttonLinkInserter.scopusExternalLinkPrefix, '');
       simpleHref = decodeURIComponent(simpleHref);
       var ind = simpleHref.indexOf('&');
       if (ind !== -1) simpleHref = simpleHref.substring(0, ind);
-      if (simpleHref.match(this.doiPattern)) {
-        mask = this.flags.SCOPUS_DOI;
+      if (simpleHref.match(GluttonLinkInserter.doiPattern)) {
+        mask = GluttonLinkInserter.flags.SCOPUS_DOI;
       }
     } else if (
       (href.indexOf('doi.org') !== -1 ||
         href.indexOf('doi.acm.org') !== -1 ||
         href.indexOf('dx.crossref.org') !== -1) &&
-      href.match(this.doiPattern)
+      href.match(GluttonLinkInserter.doiPattern)
     ) {
       // Check if the href contains a DOI link for all crossref style links
-      mask = this.flags.DOI_ADDRESS;
+      mask = GluttonLinkInserter.flags.DOI_ADDRESS;
     } else if (
       (href.indexOf('/doi/10.') !== -1 ||
         (href.indexOf('onlinelibrary.wiley.com') !== -1 && href.indexOf('&key=10.') !== -1)) &&
-      href.match(this.regexDoiPatternConservative)
+      href.match(GluttonLinkInserter.regexDoiPatternConservative)
     ) {
       // Check if the href contains a DOI link for Wiley style links ('onlinelibrary.wiley.com')
-      mask = this.flags.DOI_ADDRESS_VARIA;
-    } else if (href.indexOf('ncbi.nlm.nih.gov') !== -1 && this.pubmedPattern.test(href)) {
+      mask = GluttonLinkInserter.flags.DOI_ADDRESS_VARIA;
+    } else if (href.indexOf('ncbi.nlm.nih.gov') !== -1 && GluttonLinkInserter.pubmedPattern.test(href)) {
       // Check if the href contains a PMID link
-      mask = this.flags.PUBMED_ADDRESS;
-    } else if (this.regexPIIPattern.test(href) && currentUrl.indexOf('scholar.google.') === -1) {
+      mask = GluttonLinkInserter.flags.PUBMED_ADDRESS;
+    } else if (GluttonLinkInserter.regexPIIPattern.test(href) && currentUrl.indexOf('scholar.google.') === -1) {
       // Check if the href contains a PII link
-      mask = this.flags.HAS_PII;
-    } else if (href.indexOf('exlibrisgroup.com') !== -1 && this.openUrlPattern.test(href)) {
+      mask = GluttonLinkInserter.flags.HAS_PII;
+    } else if (href.indexOf('exlibrisgroup.com') !== -1 && GluttonLinkInserter.openUrlPattern.test(href)) {
       // Check if the href contains a supported reference to an open url link
-      mask = this.flags.OPEN_URL_BASE;
-    } else if (href.indexOf('serialssolutions.com') !== -1 && this.openUrlPattern.test(href)) {
+      mask = GluttonLinkInserter.flags.OPEN_URL_BASE;
+    } else if (href.indexOf('serialssolutions.com') !== -1 && GluttonLinkInserter.openUrlPattern.test(href)) {
       if (link.getAttribute('class') !== 'documentLink') {
-        mask = this.flags.OPEN_URL_BASE;
+        mask = GluttonLinkInserter.flags.OPEN_URL_BASE;
       }
     }
 
@@ -443,50 +474,50 @@ GluttonLinkInserter = {
   },
 
   'createOpenUrlLink': function(href, link) {
-    var matchInfo = this.openUrlPattern.exec(href);
+    var matchInfo = GluttonLinkInserter.openUrlPattern.exec(href);
     if (!matchInfo) return;
     // the last group should be the parameters:
-    var child = this.buildButton(matchInfo[matchInfo.length - 1]);
+    var child = GluttonLinkInserter.buildButton(matchInfo[matchInfo.length - 1]);
     //link.parentNode.replaceChild(child, link);
   },
 
   'createDoiLink': function(href, link) {
-    var matchInfo = this.doiPattern.exec(href);
-    if (matchInfo.length < this.doiGroup) {
+    var matchInfo = GluttonLinkInserter.doiPattern.exec(href);
+    if (matchInfo.length < GluttonLinkInserter.doiGroup) {
       return;
     }
-    var doiString = matchInfo[this.doiGroup];
+    var doiString = matchInfo[GluttonLinkInserter.doiGroup];
     var gluttonUrl = GluttonLinkInserter.gluttonService + '?doi=' + doiString;
-    var newLink = this.buildButton(gluttonUrl);
+    var newLink = GluttonLinkInserter.buildButton(gluttonUrl);
     link.parentNode.insertBefore(newLink, link.nextSibling);
     link.setAttribute('name', 'GluttonVisited');
   },
 
   'createDoiLinkVaria': function(href, link) {
-    var matchInfo = this.regexDoiPatternConservative.exec(href);
+    var matchInfo = GluttonLinkInserter.regexDoiPatternConservative.exec(href);
     if (matchInfo.length < 1) {
       return;
     }
     var doiString = matchInfo[matchInfo.length - 1];
     var gluttonUrl = GluttonLinkInserter.gluttonService + '?doi=' + doiString;
-    var newLink = this.buildButton(gluttonUrl);
+    var newLink = GluttonLinkInserter.buildButton(gluttonUrl);
     link.parentNode.insertBefore(newLink, link.nextSibling);
     link.setAttribute('name', 'GluttonVisited');
   },
 
   'createScopusLink': function(href, link) {
-    var simpleHref = href.replace('https://' + this.scopusExternalLinkPrefix, '');
+    var simpleHref = href.replace('https://' + GluttonLinkInserter.scopusExternalLinkPrefix, '');
     simpleHref = decodeURIComponent(simpleHref);
     var ind = simpleHref.indexOf('&');
     if (ind !== -1) simpleHref = simpleHref.substring(0, ind);
 
-    var matchInfo = this.doiPattern.exec(simpleHref);
-    if (matchInfo.length < this.doiGroup) {
+    var matchInfo = GluttonLinkInserter.doiPattern.exec(simpleHref);
+    if (matchInfo.length < GluttonLinkInserter.doiGroup) {
       return;
     }
-    var doiString = matchInfo[this.doiGroup];
+    var doiString = matchInfo[GluttonLinkInserter.doiGroup];
     var gluttonUrl = GluttonLinkInserter.gluttonService + '?doi=' + doiString;
-    var newLink = this.buildButton(gluttonUrl);
+    var newLink = GluttonLinkInserter.buildButton(gluttonUrl);
     newLink.setAttribute('style', 'visibility:visible;');
     link.parentNode.insertBefore(newLink, link.nextSibling);
     link.setAttribute('name', 'GluttonVisited');
@@ -494,21 +525,21 @@ GluttonLinkInserter = {
 
   'createPubmedLink': function(href, link) {
     var gluttonUrl = href.replace(
-      this.pubmedPattern,
+      GluttonLinkInserter.pubmedPattern,
       'rft_id=info:pmid/$2&rft.genre=article,chapter,bookitem&svc.fulltext=yes'
     );
-    var newLink = this.buildButton(gluttonUrl);
+    var newLink = GluttonLinkInserter.buildButton(gluttonUrl);
     link.parentNode.insertBefore(newLink, link.nextSibling);
     link.setAttribute('name', 'GluttonVisited');
   },
 
   'createPIILink': function(href, link) {
-    var matches = href.match(this.regexPIIPattern);
+    var matches = href.match(GluttonLinkInserter.regexPIIPattern);
     if (matches && matches.length > 0) {
       var thePii = matches[0];
       thePii = thePii.replace('pii/', '');
       var gluttonUrl = GluttonLinkInserter.gluttonService + '?pii=' + thePii;
-      var newLink = this.buildButton(gluttonUrl);
+      var newLink = GluttonLinkInserter.buildButton(gluttonUrl);
       link.parentNode.insertBefore(newLink, link.nextSibling);
       link.setAttribute('name', 'GluttonVisited');
     }
@@ -539,8 +570,8 @@ GluttonLinkInserter = {
 
       if (name !== 'GluttonVisited' && clazzes.match(/Z3988/i) !== null) {
         //query += '&url_ver=' + GluttonLinkInserter.openUrlVersion;
-        var newQuery = this.mapOpenURLToGlutton(query);
-        var child = this.buildButton(newQuery);
+        var newQuery = GluttonLinkInserter.mapOpenURLToGlutton(query);
+        var child = GluttonLinkInserter.buildButton(newQuery);
         span.appendChild(child);
         span.setAttribute('name', 'GluttonVisited');
       }
@@ -552,14 +583,13 @@ GluttonLinkInserter = {
    *
    * @param {Object} href
    */
-  'buildButton': function(href) {
-    //log('making link: ' + this.gluttonPrefix + href + '&sid=glutton-browser-addon');
+  'buildButton': function(href, gluttonId) {
     var span = document.createElement('span');
-    this.makeChild(href, document, span);
+    GluttonLinkInserter.makeChild(href, document, span, gluttonId);
     return span;
   },
 
-  'createLink': function(resourceUrl, text = '') {
+  'createLink': function(id, resourceUrl, text = 'glutton') {
     // set the added link, this will avoid an extra call to the OpenURL API and fix the access url
     var a = document.createElement('a');
     //a.href        = resourceUrl.replace('/original', '/pdf')
@@ -567,9 +597,19 @@ GluttonLinkInserter = {
     a.target = '_blank';
     a.alt = 'Glutton';
     a.name = 'GluttonLink';
-    a.className = 'glutton-link';
+    a.className = resourceUrl ? 'glutton-link' : 'glutton-link-disabled';
+    a.className += text === 'istex' ? ' istex' : '';
     a.textContent = text ? text : 'glutton';
     a.rel = 'noopener noreferrer';
+    $(a).click(function(event) {
+      event.preventDefault();
+      if (typeof browser !== 'undefined' && typeof browser.browserAction !== 'undefined')
+        return browser.browserAction.openPopup();
+      GluttonLinkInserter.refbibs.current = GluttonLinkInserter.refbibs.getData(id);
+    });
+    $(a).contextmenu(function(event) {
+      GluttonLinkInserter.refbibs.current = GluttonLinkInserter.refbibs.getData(id);
+    });
 
     return a;
   },
@@ -581,7 +621,7 @@ GluttonLinkInserter = {
     return result;
   },
 
-  'makeChild': function(href, document, parent) {
+  'makeChild': function(href, document, parent, gluttonId) {
     // insert the sid in the openurl for usage statistics reason
     if (!~href.indexOf('sid=')) {
       // sid is alone in the given openurl
@@ -597,21 +637,31 @@ GluttonLinkInserter = {
         href = href.replace('sid=', 'sid=glutton-browser-addon,');
       }
     }
+    var sid = GluttonLinkInserter.parseQuery(href).sid;
 
-    var sid = this.parseQuery(href).sid;
+    // Build url if it's not done yet
+    var requestUrl = encodeURI(
+      href.indexOf(GluttonLinkInserter.gluttonPrefix) === -1 ? GluttonLinkInserter.gluttonPrefix + href : href
+    );
 
-    var requestUrl = encodeURI(GluttonLinkInserter.gluttonPrefix + href);
+    let id = gluttonId,
+      service =
+        requestUrl.indexOf(GluttonLinkInserter.gluttonPrefix + GluttonLinkInserter.gluttonService + '?') > -1
+          ? 'oa/oa_istex'
+          : 'lookup';
 
-    let gluttonId = GluttonLinkInserter.newGluttonLinkId();
+    if (typeof gluttonId !== 'undefined' && typeof GluttonLinkInserter.refbibs.get(gluttonId) !== 'undefined') {
+      GluttonLinkInserter.refbibs.setValue(gluttonId, 'buttons', parent);
+    } else {
+      id = GluttonLinkInserter.refbibs.new({ 'buttons': parent }).gluttonId;
+    }
 
-    parents[gluttonId] = parent;
+    let data = { 'gluttonId': id, 'services': {} };
+    data.services[service] = { 'url': requestUrl };
 
     chrome.runtime.sendMessage({
-      'message': 'fromGluttonLinkInserterToBackground:lookup',
-      'data': {
-        'gluttonId': gluttonId,
-        'url': requestUrl
-      }
+      'message': 'fromGluttonLinkInserterToBackground:' + service,
+      'data': data
     });
   },
 
