@@ -5,6 +5,7 @@
 
 chrome.storage.local.get(null, function(settings) {
   if (chrome.runtime.lastError) console.log('error chrome.storage.local.get', chrome.runtime.lastError);
+  console.log(settings);
   GluttonLinkInserter.config(settings);
   setTimeout(GluttonLinkInserter.onDOMContentLoaded, 0);
   return doTheJob(settings);
@@ -19,10 +20,55 @@ function doTheJob(settings) {
   });
   $(document).bind('DOMNodeInserted', function(e) {
     var element = $(e.target);
-    if (element.is('a:not([name="GluttonLink"]'))
+    if (element.is('a') && element.attr('name') !== 'GluttonLink')
       return element.contextmenu(function() {
         GluttonLinkInserter.refbibs.current = undefined;
       });
+  });
+
+  ModalManager.insertModal();
+
+  // Click on processPdf button
+  ModalManager.processPdf(function() {
+    if (
+      typeof GluttonLinkInserter.refbibs.current.services.processPdf === 'undefined' &&
+      typeof GluttonLinkInserter.refbibs.current.pdf === 'undefined'
+    )
+      return chrome.runtime.sendMessage({
+        'message': 'fromContentScriptToBackground:processPdf',
+        'data': {
+          'services': {
+            'processHeaderDocument': {
+              'url': URLS.processHeaderDocument
+            },
+            'referenceAnnotations': {
+              'url': URLS.referenceAnnotations
+            }
+          },
+          'gluttonId': GluttonLinkInserter.refbibs.current.gluttonId,
+          'input': GluttonLinkInserter.refbibs.current.oaLink
+        }
+      });
+    else ModalManager.update(getDataForModal());
+  });
+
+  // Click on openUrl button
+  ModalManager.openUrl(function() {
+    return chrome.runtime.sendMessage({
+      'message': 'fromContentScriptToBackground:openTab',
+      'data': { 'url': ModalManager.getLink(GluttonLinkInserter.refbibs.current) }
+    });
+  });
+
+  // Click on cite button
+  ModalManager.processCite(function() {
+    let citeType = ModalManager.getCiteType();
+    return ModalManager.buildCite(citeType, GluttonLinkInserter.refbibs.current);
+  });
+
+  // Click on copy button
+  ModalManager.processCopy(function() {
+    return ModalManager.copyClipboard();
   });
 
   var port = chrome.runtime.connect(),
@@ -74,7 +120,11 @@ function doTheJob(settings) {
       });
       // Get result from background (GROBID processCitation result)
     } else if (request.message === 'fromBackgroundToContentScript:parseReference') {
-      if (request.data.err) alert(errorMsg(request.data.res.error));
+      if (request.data.err) {
+        alert(errorMsg(request.data.res.error));
+        GluttonLinkInserter.refbibs.stats.fail++;
+      } else GluttonLinkInserter.refbibs.stats.success++;
+      GluttonLinkInserter.refbibs.stats.count++;
       let refbib = GluttonLinkInserter.refbibs.update(request.data.res.refbib.gluttonId, request.data.res.refbib);
       if (refbib.target) GluttonLinkInserter.createGluttonLinks(refbib);
       if (
@@ -82,41 +132,24 @@ function doTheJob(settings) {
         refbib.gluttonId === GluttonLinkInserter.refbibs.current.gluttonId
       ) {
         GluttonLinkInserter.refbibs.current = GluttonLinkInserter.refbibs.getData(refbib.gluttonId);
-        return refreshCurrentRefbibIntoPopup();
+        ModalManager.update(getDataForModal());
+        return refreshDataIntoPopup();
       }
-      // Call GROBID processPdf service
-    } else if (request.message === 'fromPopupToContentScript:processPdf') {
-      let refbib = GluttonLinkInserter.refbibs.new();
-      return chrome.runtime.sendMessage({
-        'message': 'fromContentScriptToBackground:processPdf',
-        'data': {
-          'services': {
-            'processHeaderDocument': {
-              'url': URLS.processHeaderDocument
-            },
-            'referenceAnnotations': {
-              'url': URLS.referenceAnnotations
-            },
-            'lookup': {
-              'url': URLS.lookup
-            }
-          },
-          'gluttonId': refbib.gluttonId,
-          'input': window.location.href
-        }
-      });
       // Get result from background (GROBID referenceAnnotations result)
     } else if (request.message === 'fromBackgroundToContentScript:processPdf') {
-      if (request.data.err) alert(errorMsg(request.data.res.error));
+      if (request.data.err) alert('Error : WebExtension did not find direct link to PDF');
+      // if (request.data.err) alert(errorMsg(request.data.res.error));
       GluttonLinkInserter.refbibs.update(request.data.res.refbib.gluttonId, request.data.res.refbib);
       GluttonLinkInserter.refbibs.current = GluttonLinkInserter.refbibs.getData(request.data.res.refbib.gluttonId);
-      refreshCurrentRefbibIntoPopup();
-      // TODO REFRESH UI TO DISPLAY ANNOTATIONS
-      // Get result from background (GROBID referenceAnnotations result)
+      ModalManager.update(getDataForModal());
+      // Get result from background (lookup & oa/oa_istex result)
     } else if (
       request.message === 'fromBackgroundToContentScript:lookup' ||
       request.message === 'fromBackgroundToContentScript:oa/oa_istex'
     ) {
+      if (request.data.err) GluttonLinkInserter.refbibs.stats.fail++;
+      else GluttonLinkInserter.refbibs.stats.success++;
+      GluttonLinkInserter.refbibs.stats.count++;
       let service = request.message.split(':')[1],
         refbib = GluttonLinkInserter.refbibs(request.data.res.refbib.gluttonId);
       GluttonLinkInserter.refbibs.update(refbib.gluttonId, request.data.res.refbib);
@@ -149,10 +182,14 @@ function doTheJob(settings) {
           }
         });
       }
-      return refreshCurrentRefbibIntoPopup();
+      ModalManager.update(getDataForModal());
+      return ModalManager.show();
       // refresh Glutton UI
     } else if (request.message === 'fromPopupToContentScript:refreshGluttonUI') {
-      return refreshCurrentRefbibIntoPopup();
+      return refreshDataIntoPopup();
+      // Select refbib & highlight it
+    } else if (request.message === 'fromPopupToContentScript:ping') {
+      return chrome.runtime.sendMessage({ 'message': 'fromContentScriptToPopup:pong' });
       // Select refbib & highlight it
     } else if (request.message === 'fromPopupToContentScript:highlight') {
       let refbib = GluttonLinkInserter.refbibs(request.data.gluttonId);
@@ -171,15 +208,20 @@ function doTheJob(settings) {
   }
 
   // refresh current refbib in Popup
-  function refreshCurrentRefbibIntoPopup() {
+  function refreshDataIntoPopup() {
     return chrome.runtime.sendMessage({
       'message': 'fromContentScriptToPopup:refreshGluttonUI',
       'data': {
-        'refbib': GluttonLinkInserter.refbibs.current,
-        'refbibs': { 'count': GluttonLinkInserter.refbibs.count() },
-        'processPdf': page.contentType === 'application/pdf'
+        'stats': GluttonLinkInserter.refbibs.stats,
+        'refbibs': { 'count': GluttonLinkInserter.refbibs.count() }
       }
     });
+  }
+
+  function getDataForModal() {
+    return {
+      'refbib': GluttonLinkInserter.refbibs.current
+    };
   }
 
   // Higlight element

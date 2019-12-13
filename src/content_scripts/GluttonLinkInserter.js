@@ -4,25 +4,34 @@
 /* globals LZString, warn, error, debug, logXhrError */
 'use strict';
 
-// Listeners
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-  // Result of lookup service
-  if (
-    request.message === 'fromBackgroundToGluttonLinkInserter:oa/oa_istex' ||
-    request.message === 'fromBackgroundToGluttonLinkInserter:lookup'
-  ) {
+chrome.storage.local.get(null, function(settings) {
+  if (chrome.runtime.lastError) console.log('error chrome.storage.local.get', chrome.runtime.lastError);
+
+  let show_istex = typeof settings.SHOW_ISTEX !== 'undefined' && settings.SHOW_ISTEX;
+
+  // Listeners
+  chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+    // Result of lookup service
     if (
-      request.data.err ||
-      (typeof request.data.res.refbib.oaLink === 'undefined' &&
-        typeof request.data.res.refbib.istexLink === 'undefined')
+      request.message === 'fromBackgroundToGluttonLinkInserter:oa/oa_istex' ||
+      request.message === 'fromBackgroundToGluttonLinkInserter:lookup'
     ) {
-      if (request.data.err) logXhrError(request.data.res.error.url, request.data.res.error.errorThrown);
-      return GluttonLinkInserter.refbibs.remove(request.data.res.refbib.gluttonId);
-    } else {
-      let refbib = GluttonLinkInserter.refbibs.update(request.data.res.refbib.gluttonId, request.data.res.refbib);
-      if (refbib.buttons) GluttonLinkInserter.addButtons(refbib, false);
+      GluttonLinkInserter.refbibs.stats.count++;
+      if (
+        request.data.err ||
+        (typeof request.data.res.refbib.oaLink === 'undefined' &&
+          (typeof request.data.res.refbib.istexLink === 'undefined' || !show_istex))
+      ) {
+        if (request.data.err) logXhrError(request.data.res.error.url, request.data.res.error.errorThrown);
+        GluttonLinkInserter.refbibs.stats.fail++;
+        GluttonLinkInserter.refbibs.remove(request.data.res.refbib.gluttonId);
+      } else {
+        GluttonLinkInserter.refbibs.stats.success++;
+        let refbib = GluttonLinkInserter.refbibs.update(request.data.res.refbib.gluttonId, request.data.res.refbib);
+        if (refbib.buttons) GluttonLinkInserter.addButtons(refbib, show_istex, false);
+      }
     }
-  }
+  });
 });
 
 var GluttonLinkInserter;
@@ -71,9 +80,15 @@ const forbidenElements = [
 ];
 
 GluttonLinkInserter = {
+  'disabled': false,
   'maxPageLinks': 2500,
   'mustDebug': false,
   'refbibs': {
+    'stats': {
+      'count': 0,
+      'fail': 0,
+      'success': 0
+    },
     'lastId': -1,
     'data': {},
     'current': undefined,
@@ -110,7 +125,7 @@ GluttonLinkInserter = {
       return Object.keys(GluttonLinkInserter.refbibs.data).length;
     }
   },
-  'addButtons': function(refbib, defaultBtn = true) {
+  'addButtons': function(refbib, show_istex, defaultBtn = true) {
     // Add Id to buttons
     refbib.buttons.setAttribute('gluttonId', refbib.gluttonId);
     refbib.buttons.innerHTML = '';
@@ -121,6 +136,7 @@ GluttonLinkInserter = {
     typeof refbib.oaLink !== 'undefined' &&
       refbib.buttons.appendChild(GluttonLinkInserter.createLink(refbib.gluttonId, refbib.oaLink));
     typeof refbib.istexLink !== 'undefined' &&
+      show_istex &&
       refbib.buttons.appendChild(GluttonLinkInserter.createLink(refbib.gluttonId, refbib.istexLink, 'istex'));
     // Add Glutton Id
     // refbib.buttons.appendChild(GluttonLinkInserter.createGluttonId(refbib.gluttonId));
@@ -193,6 +209,7 @@ GluttonLinkInserter = {
   },
 
   'onDOMNodeInserted': function(event) {
+    if (GluttonLinkInserter.disabled) return;
     var node = event.target;
     GluttonLinkInserter.findAndReplaceLinks(node);
   },
@@ -615,8 +632,6 @@ GluttonLinkInserter = {
           'message': 'fromGluttonLinkInserterToBackground:openTab',
           'data': { 'url': resourceUrl }
         });
-      if (typeof browser !== 'undefined' && typeof browser.browserAction !== 'undefined')
-        return browser.browserAction.openPopup();
     });
     $(a).contextmenu(function(event) {
       GluttonLinkInserter.refbibs.current = GluttonLinkInserter.refbibs.getData(id);

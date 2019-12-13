@@ -7,7 +7,7 @@ const SERVICES = {};
 
 // download file with method GET
 SERVICES.FILE = {
-  'get': function(options, cb) {
+  'getPDF': function(options, cb) {
     let opts = Object.assign(
       {
         'method': 'GET',
@@ -21,8 +21,16 @@ SERVICES.FILE = {
       options
     );
     return $.ajax(opts)
-      .done(function(res) {
-        return cb(false, res);
+      .done(function(res, textStatus, jqXHR) {
+        let ct = jqXHR.getResponseHeader('content-type') || '';
+        if (ct.indexOf('pdf') === -1)
+          return cb(true, {
+            'status': jqXHR.status,
+            'errorThrown': "Content Type of response don't match with content type of PDF",
+            'textStatus': textStatus,
+            'url': this.url
+          });
+        return cb(false, { 'blob': res, 'data': URL.createObjectURL(res) });
       })
       .fail(function(jqXHR, textStatus, errorThrown) {
         if (textStatus === 'timeout' && this.tryCount < this.maxRetry) {
@@ -77,7 +85,7 @@ SERVICES.GROBID = {
       },
       function(err, res) {
         if (err) return cb(err, res);
-        else return cb(err, extractParams(res));
+        else return cb(err, res);
       }
     );
   },
@@ -112,7 +120,7 @@ SERVICES.GROBID = {
       },
       function(err, res) {
         if (err) return cb(err, res);
-        else return cb(err, extractParams(res));
+        else return cb(err, res);
       }
     );
   }
@@ -151,20 +159,3 @@ SERVICES.GLUTTON = {
     });
   }
 };
-
-// Extract data from GROBID response
-function extractParams(element) {
-  let root = $(element);
-  return {
-    'postValidate': 'true',
-    'firstAuthor': root.find('author:first surname').text() || undefined, // firstAuthor
-    'atitle': root.find('analytic title[level="a"]').text() || undefined, // atitle
-    'jtitle': root.find('monogr title[level="j"]').text() || undefined, // jtitle
-    'volume': root.find('biblscope[unit="volume"]').text() || undefined, // volume
-    'firstPage': root.find('biblscope[unit="page"]').attr('from') || undefined, // firstPage
-    'doi': root.find('idno[type="DOI"]').text() || undefined, // doi
-    'pmid': root.find('idno[type="PMID"]').text() || undefined, // pmid
-    'pmc': root.find('idno[type="pmc"]').text() || undefined, // pmc
-    'istexId': root.find('idno[type="istexId"]').text() || undefined // istexid
-  };
-}

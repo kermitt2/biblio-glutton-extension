@@ -27,18 +27,11 @@ body {
   margin-bottom: 10px;
 }
 
-#popup-header #settings,
-#popup-header #processPdf,
-#popup-header #openUrl {
+#popup-header #settings {
   float: right;
   margin-left: 15px;
   margin-top: 5px;
   margin-bottom: 5px;
-}
-
-#popup-header #processPdf,
-#popup-header #openUrl {
-  display: none;
 }
 
 #popup-body {
@@ -58,26 +51,30 @@ body {
   display: inline-block;
 }
 
-#popup-body #refbib {
-  border: 0;
-  border-top: 1px solid black;
-  border-bottom: 1px solid black;
-  padding: 3px;
+#popup-footer {
+  display: none;
 }
 
-#popup-body .data-row {
+#popup-footer #stats {
+  padding-top: 5px;
+  padding-bottom: 5px;
+  border-top: 1px solid black;
+  border-bottom: 1px solid black;
+}
+
+.data-row {
   display: block;
   margin-top: 3px;
   margin-bottom: 3px;
 }
 
-#popup-body .data-row .key:after {
-  content: ": ";
+.data-row .key:after {
+  content: " : ";
 }
 
-#popup-body .data-row .key{
+.data-row .key {
   vertical-align:middle;
-  max-width: 30%;
+  max-width: 70%;
   display: inline-block;
   margin-right: 2%;
   white-space: nowrap;
@@ -85,36 +82,11 @@ body {
   overflow: hidden;
 }
 
-#popup-body .data-row .value {
+.data-row .value {
   display: inline-block;
   vertical-align:middle;
-  max-width: 60%;
+  max-width: 20%;
   white-space: nowrap;
   text-overflow:ellipsis;
   overflow: hidden;
-}
-
-#popup-footer {
-  display: none;
-  margin-top: 15px;
-  vertical-align: middle;
-}
-
-#popup-footer #citeString {
-  display: inline-block;
-  padding: 5px;
-}
-
-#popup-footer #citeType {
-  display: inline-block;
-  margin-top: 5px;
-  margin-bottom: 5px;
-}
-
-#popup-footer #processCopy,
-#popup-footer #processCite {
-  display: inline-block;
-  margin-left: 20px;
-  margin-top: 5px;
-  margin-bottom: 5px;
 }

@@ -42,15 +42,28 @@
       "<all_urls>"
     ],
     "js": [
+      "vendors/lz-string.js",
+      "content_scripts/log.js",
       "vendors/jquery-3.2.1.js",
-      "/vendors/lz-string.js",
-      "/content_scripts/log.js",
+      "vendors/only-modal/js/bootstrap.min.js",
+      "vendors/fontawesome/js/all.js",
+      "vendors/pdf.js/build/generic/build/pdf.js",
+      "vendors/pdf.js/build/components/pdf_viewer.js",
+      "vendors/pdf.js/build/generic/web/debugger.js",
       "shared/default_options.js",
+      "content_scripts/cite.js",
+      "content_scripts/ModalManager.js",
       "content_scripts/GluttonLinkInserter.js",
       "content_scripts/tabBootstrap.js"
     ],
     "css": [
-      "content_scripts/GluttonLinkInserter.css"
+      "vendors/pdf.js/build/components/pdf_viewer.css",
+      "vendors/only-modal/css/bootstrap.min.css",
+      "content_scripts/GluttonLinkInserter.css",
+      "content_scripts/ModalManager.css"
     ]
-  }]
+  }],
+  "web_accessible_resources": [
+    "vendors/pdf.js/*"
+  ]
 }

@@ -1,0 +1,102 @@
+#gluttonModal div.modal-dialog {
+  width: 860px;
+}
+
+.modal-subtitle {
+  font-size: 16px;
+}
+
+#gluttonModal #modal-refbib,
+#gluttonModal #modal-cite,
+#gluttonModal #modal-pdf {
+  margin-bottom: 25px;
+}
+
+
+#gluttonModal #gluttonPdf {
+    background: lightgray;
+    padding-right: 15px;
+}
+
+#gluttonModal #gluttonPdf .gluttonAnnotations {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
+  line-height: 1;
+  overflow: hidden;
+}
+
+#gluttonModal #gluttonPdf .gluttonAnnotations div {
+  position: relative;
+}
+
+#gluttonModal #gluttonPdf .gluttonAnnotations div a {
+  position: absolute;
+  z-index: 100000;
+}
+
+#gluttonModal #gluttonModalLabel {
+  font-size: 24px;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  vertical-align: middle;
+  display: inline-block;
+  text-decoration: underline;
+}
+
+#gluttonModal #modal-buttons {
+  vertical-align: middle;
+  display: block;
+  float: right;
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+
+#gluttonModal #modal-buttons > div {
+  vertical-align: middle;
+  display: inline-block;
+  margin-left: 15px;
+}
+
+#modal-cite {
+  display: none;
+}
+
+#modal-cite #citeType,
+#modal-cite #processCopy,
+#modal-cite #processCite {
+  display: inline-block;
+}
+
+.data-row {
+  display: block;
+  width: 100%;
+  margin-top: 3px;
+  margin-bottom: 3px;
+}
+
+.data-row .key:after {
+  content: " : ";
+}
+
+.data-row .key {
+  vertical-align:middle;
+  max-width: 25%;
+  display: inline-block;
+  margin-right: 2%;
+  white-space: nowrap;
+  text-overflow:ellipsis;
+  overflow: hidden;
+}
+
+.data-row .value {
+  display: inline-block;
+  vertical-align:middle;
+  max-width: 70%;
+  white-space: nowrap;
+  text-overflow:ellipsis;
+  overflow: hidden;
+}

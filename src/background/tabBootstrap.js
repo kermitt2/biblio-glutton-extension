@@ -11,6 +11,8 @@ var whiteList = [
   ],
   whiteListPatterns = whiteList.map(compileUrlPattern);
 
+let XMLS = new XMLSerializer();
+
 /*
 Create all the context menu items.
 */
@@ -37,7 +39,6 @@ chrome.contextMenus.onClicked.addListener(function(info, tab) {
   if (info.menuItemId === 'parseReference')
     return chrome.tabs.sendMessage(tab.id, { 'message': 'fromContextMenusToContentScript:parseReference' });
   else if (info.menuItemId === 'cite') {
-    if (typeof browser !== 'undefined') return browser.browserAction.openPopup();
     return chrome.tabs.sendMessage(tab.id, { 'message': 'fromContextMenusToContentScript:cite', 'data': info });
   }
 });
@@ -63,7 +64,10 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
       },
       result
     );
-  } else if (request.message === 'fromGluttonLinkInserterToBackground:openTab') {
+  } else if (
+    request.message === 'fromGluttonLinkInserterToBackground:openTab' ||
+    request.message === 'fromContentScriptToBackground:openTab'
+  ) {
     return chrome.tabs.create({ 'url': request.data.url });
   } else if (request.message === 'fromContentScriptToBackground:parseReference') {
     let response = buildResponse(request.message),
@@ -72,12 +76,20 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     return callGrobidService(
       'processCitation',
       request.data.services.processCitation,
-      { 'message': response.message, 'mute': true, 'service': 'processCitation', 'tabId': sender.tab.id },
+      {
+        'merge': xmlGrobidMerge,
+        'message': response.message,
+        'mute': true,
+        'service': 'processCitation',
+        'tabId': sender.tab.id
+      },
       result,
       function(res) {
         // Call Glutton service (lookup)
         return callGluttonService(
-          { 'url': buildUrl(request.data.services.lookup.url, res.refbib.services.processCitation.res) },
+          {
+            'url': buildUrl(request.data.services.lookup.url, extractLookupParams(res.refbib.processCitation))
+          },
           {
             'merge': lookupMerge,
             'message': response.message,
@@ -90,13 +102,17 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     );
   } else if (request.message === 'fromContentScriptToBackground:processPdf') {
     let response = buildResponse(request.message),
-      result = { 'refbib': { 'gluttonId': request.data.gluttonId } };
+      result = { 'refbib': { 'gluttonId': request.data.gluttonId } },
+      blob;
     // Donwload PDF file
-    return callFileService(
+    return callPdfService(
       request.data.input,
       {
         'merge': function(result) {
-          return { 'refbib': { 'pdf': { 'blob': result, 'url': request.data.input } } };
+          blob = result.blob;
+          return {
+            'refbib': { 'pdf': { 'url': request.data.input, 'data': result.data } }
+          };
         },
         'message': response.message,
         'mute': true,
@@ -107,29 +123,31 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         // Call GROBID service (processHeaderDocument)
         return callGrobidService(
           'processHeaderDocument',
-          { 'url': request.data.services.processHeaderDocument.url, 'input': res.refbib.pdf.blob },
-          { 'message': response.message, 'mute': true, 'service': 'processHeaderDocument', 'tabId': sender.tab.id },
+          { 'url': request.data.services.processHeaderDocument.url, 'input': blob },
+          {
+            'merge': xmlGrobidMerge,
+            'message': response.message,
+            'mute': true,
+            'service': 'processHeaderDocument',
+            'tabId': sender.tab.id
+          },
           res,
           function(res) {
             // Call GROBID service (referenceAnnotations)
             return callGrobidService(
               'referenceAnnotations',
-              { 'url': request.data.services.referenceAnnotations.url, 'input': res.refbib.pdf.blob },
-              { 'message': response.message, 'mute': true, 'service': 'referenceAnnotations', 'tabId': sender.tab.id },
-              res,
-              function(res) {
-                // Call Glutton service (lookup)
-                return callGluttonService(
-                  { 'url': buildUrl(request.data.services.lookup.url, res.refbib.services.processHeaderDocument.res) },
-                  {
-                    'merge': lookupMerge,
-                    'message': response.message,
-                    'service': 'lookup',
-                    'tabId': sender.tab.id
-                  },
-                  res
-                );
-              }
+              { 'url': request.data.services.referenceAnnotations.url, 'input': blob },
+              {
+                'merge': function(result, service) {
+                  let res = { 'refbib': {} };
+                  res.refbib[service] = result;
+                  return res;
+                },
+                'message': response.message,
+                'service': 'referenceAnnotations',
+                'tabId': sender.tab.id
+              },
+              res
             );
           }
         );
@@ -141,8 +159,6 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 chrome.runtime.onConnect.addListener(function(port) {
   return port.onMessage.addListener(function(page) {
     if (!isContentTypeAllowed(page.contentType) || !isWhiteListed(port.sender.url)) return;
-    chrome.tabs.executeScript(port.sender.tab.id, { file: '/vendors/lz-string.js' });
-    chrome.tabs.executeScript(port.sender.tab.id, { file: '/content_scripts/log.js' });
   });
 });
 
@@ -217,7 +233,7 @@ function callService(SERVICE, options, result, cb) {
     let _res = { 'refbib': {} };
     if (typeof options.service !== 'undefined') {
       _res.refbib.services = {};
-      _res.refbib.services[options.service] = { 'err': err, 'res': res };
+      _res.refbib.services[options.service] = { 'err': err, 'res': sanitizeResultOf(options.service, res) };
     }
     if (err) {
       result = $.extend(true, _res, result, { 'error': res });
@@ -226,11 +242,11 @@ function callService(SERVICE, options, result, cb) {
         'message': options.message,
         'data': {
           'err': err,
-          'res': _res
+          'res': result
         }
       });
     } else {
-      if (typeof options.merge === 'function') result = $.extend(true, _res, result, options.merge(res));
+      if (typeof options.merge === 'function') result = $.extend(true, _res, result, options.merge(res, SERVICE.route));
       else result = $.extend(true, _res, result, { 'refbib': res });
     }
     if (typeof options.mute === 'undefined' || !options.mute) {
@@ -238,19 +254,24 @@ function callService(SERVICE, options, result, cb) {
         'message': options.message,
         'data': {
           'err': err,
-          'res': _res
+          'res': result
         }
       });
     }
-    console.log(SERVICE, options, _res);
+    console.log(SERVICE, options, _res, result);
     if (typeof cb !== 'undefined') return cb(result);
   });
 }
 
-// Call file service
-function callFileService(url, options, result, cb) {
+function sanitizeResultOf(service, res) {
+  if (service === 'processHeaderDocument' || service === 'processCitation') return null;
+  else return res;
+}
+
+// Call PDF service
+function callPdfService(url, options, result, cb) {
   return callService(
-    { 'name': 'FILE', 'route': 'get' },
+    { 'name': 'FILE', 'route': 'getPDF' },
     {
       'merge': options.merge,
       'message': options.message,
@@ -315,6 +336,86 @@ function buildUrl(baseUrl, parameters) {
   return encodeURI(result);
 }
 
+// Extract data from GROBID response
+function extractLookupParams(data) {
+  return {
+    'postValidate': 'true',
+    'firstAuthor': data.author && data.author.length > 0 && data.author[0] ? data.author[0].surname : undefined, // firstAuthor
+    'atitle': data.atitle ? data.atitle.text : undefined, // atitle
+    'jtitle': data.jtitle ? data.jtitle.text : undefined, // jtitle
+    'volume': data.biblScope ? data.biblScope.volume : undefined, // volume
+    'firstPage': data.biblScope ? data.biblScope.from : undefined, // firstPage
+    'doi': data.DOI || undefined, // doi
+    'pii': data.PII || undefined, // doi
+    'pmid': data.PMID || undefined, // pmid
+    'pmc': data.PMC || undefined, // pmc
+    'istexid': data.istexId || undefined // istexid
+  };
+}
+
+// Extract data from GROBID response
+function extractDataFromGrobidXML(element) {
+  let root = $(element);
+  let result = {
+    'atitle': {
+      'text': root.find('biblStruct > analytic > title[level="a"]').text(),
+      'main': root.find('biblStruct > analytic > title[level="a"][type="main"]').text(),
+      'abbrev': root.find('biblStruct > analytic > title[level="a"][type="abbrev"]').text()
+    },
+    'jtitle': {
+      'text': root.find('biblStruct > monogr > title[level="j"]').text(),
+      'main': root.find('biblStruct > monogr > title[level="j"][type="main"]').text(),
+      'abbrev': root.find('biblStruct > monogr > title[level="j"][type="abbrev"]').text()
+    },
+    'mtitle': {
+      'text': root.find('biblStruct > monogr > title[level="m"]').text(),
+      'main': root.find('biblStruct > monogr > title[level="m"][type="main"]').text(),
+      'abbrev': root.find('biblStruct > monogr > title[level="m"][type="abbrev"]').text()
+    },
+    'DOI': root.find('biblStruct > analytic > idno[type="DOI"]').text(),
+    'PMID': root.find('biblStruct > analytic > idno[type="PMID"]').text(),
+    'PII': root.find('biblStruct > analytic > idno[type="PII"]').text(),
+    'ark': root.find('biblStruct > analytic > idno[type="ark"]').text(),
+    'istexId': root.find('biblStruct > analytic > idno[type="istexId"]').text(),
+    'ISBN': root.find('biblStruct > analytic > idno[type="ISBN"]').text(),
+    'ISSN': root.find('biblStruct > monogr > idno[type="ISSN"]').text(),
+    'ISSNe': root.find('biblStruct > monogr > idno[type="ISSNe"]').text(),
+    'jtitle': {
+      'text': root.find('biblStruct > monogr > title[level="j"]').text(),
+      'main': root.find('biblStruct > monogr > title[level="j"][type="main"]').text(),
+      'abbrev': root.find('biblStruct > monogr > title[level="j"][type="abbrev"]').text()
+    },
+    'biblScope': {
+      'volume': root.find('biblStruct > monogr > imprint > biblScope[unit="volume"]').text(),
+      'issue': root.find('biblStruct > monogr > imprint > biblScope[unit="issue"]').text(),
+      'from': root.find('biblStruct > monogr > imprint > biblScope[unit="page"]').attr('from'),
+      'to': root.find('biblStruct > monogr > imprint > biblScope[unit="page"]').attr('to')
+    },
+    'published': root.find('biblStruct > monogr > imprint > date[type="published"]').attr('when'),
+    'open-access': root.find('biblStruct > analytic > ptr[type="open-access"]').attr('target'),
+    'addrLine': root.find('biblStruct > monogr > meeting > address > addrLine').text(),
+
+    'author': root
+      .find('biblStruct > analytic > author')
+      .map(function() {
+        return {
+          'first': $(this)
+            .find('persName > forename[type="first"]')
+            .text(),
+          'middle': $(this)
+            .find('persName > forename[type="middle"]')
+            .text(),
+          'surname': $(this)
+            .find('persName > surname')
+            .text()
+        };
+      })
+      .get(),
+    'orgName': root.find('biblStruct > monogr > respStmt > orgName').text()
+  };
+  return result;
+}
+
 // Build istexLink after lookup call
 function lookupMerge(result) {
   return $.extend(
@@ -329,4 +430,16 @@ function lookupMerge(result) {
       }
     }
   );
+}
+
+// Build response of GROBID service when result is an xml
+function xmlGrobidMerge(result, service) {
+  let res = { 'refbib': {} };
+  res.refbib[service] = extractDataFromGrobidXML(result);
+  return res;
+}
+
+// Build response of GROBID service when result is an xml
+function xmlToString(xmlObject) {
+  return XMLS.serializeToString(result);
 }

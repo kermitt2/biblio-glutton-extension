@@ -15,50 +15,31 @@
             <i class="fas fa-tools"></i>
           </button>
         </div>
-        <div id="openUrl">
-          <button class="btn btn-sm btn-light btn-outline-secondary" type="button">
-            <i class="fas fa-external-link-alt"></i>
-          </button>
-        </div>
-        <div id="processPdf">
-          <button class="btn btn-sm btn-light btn-outline-secondary" type="button">
-            <i class="fas fa-file-upload"></i>
-          </button>
-        </div>
       </div>
       <div id="popup-body">
         <div id="popup-body-title">
           <div id="refbibs-count">0</div> reference(s) resolved in the current page
         </div>
-        <div id="refbib">Glutton Extension does not work on this tab</div>
+        <div id="error-msg">Glutton Extension does not work on this tab</div>
       </div>
       <div id="popup-footer">
-        <div class="data-row">
-          <div id="citeType">
-            <input type="radio" name="citeType" id="bibtex" value="bibtex" checked>
-            <label for="bibtex">Bibtex</label>
-            <input type="radio" name="citeType" id="ohter" value="ohter">
-            <label for="ohter">Other</label>
+        <div id="stats">
+          <div class="data-row">
+            <div class="key">Total resolves</div>
+            <div id="resolve-count" class="value">undefined</div>
           </div>
-          <div id="processCite">
-            <button class="btn btn-sm btn-light btn-outline-secondary" type="button">
-              <i class="fas fa-quote-right"></i>
-            </button>
+          <div class="data-row">
+            <div class="key">Failed resolves</div>
+            <div id="resolve-fail-count" class="value">undefined</div>
+          </div>
+          <div class="data-row">
+            <div class="key">Successful resolves</div>
+            <div id="resolve-success-count" class="value">undefined</div>
           </div>
         </div>
-        <div class="data-row">
-          <div id="citeString">
-            <input type="text"/>
-          </div>
-          <div id="processCopy">
-            <button class="btn btn-sm btn-light btn-outline-secondary" type="button">
-              <i class="fas fa-copy"></i>
-            </button>
-          </div>
       </div>
     </div>
     <script src="../vendors/jquery-3.2.1.js"></script>
-    <script src="cite.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>
