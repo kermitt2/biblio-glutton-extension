@@ -188,27 +188,39 @@ let ModalManager = {
           'cMapPacked': CMAP_PACKED
         });
 
-        // Check if all pages/layers are rendered & then add annotations
-        document.addEventListener('pagesloaded', function(e) {
-          let intervalID = window.setInterval(function() {
-            console.log(renderStats);
-            if (renderStats.textlayerrendered === 0 && renderStats.pagerendered === 0) {
-              console.log(annotations);
-              clearInterval(intervalID);
-              ModalManager.setupAnnotations(annotations);
-              GluttonLinkInserter.disabled = false; // Disable GluttonLinkInserter
-            }
-            renderStats.tryCount++;
-            if (renderStats.tryCount > renderStats.tryMax) clearInterval(intervalID);
-          }, 1000);
-        });
+        let textlayerrenderedListener = function(e) {
+            renderStats.textlayerrendered -= 1;
+          },
+          pagerenderedListener = function(e) {
+            renderStats.pagerendered -= 1;
+          };
 
-        document.addEventListener('textlayerrendered', function(e) {
-          renderStats.textlayerrendered -= 1;
-        });
-        document.addEventListener('pagerendered', function(e) {
-          renderStats.pagerendered -= 1;
-        });
+        // Check if all pages/layers are rendered & then add annotations
+        document.addEventListener(
+          'pagesloaded',
+          function() {
+            let intervalID = window.setInterval(function() {
+              console.log(renderStats);
+              if (renderStats.textlayerrendered === 0 && renderStats.pagerendered === 0) {
+                console.log(annotations);
+                clearInterval(intervalID);
+                removeEventListener('textlayerrendered', textlayerrenderedListener);
+                removeEventListener('pagerendered', pagerenderedListener);
+                ModalManager.setupAnnotations(annotations);
+                GluttonLinkInserter.disabled = false; // Disable GluttonLinkInserter
+              }
+              renderStats.tryCount++;
+              if (renderStats.tryCount > renderStats.tryMax) {
+                clearInterval(intervalID);
+                removeEventListener('textlayerrendered', textlayerrenderedListener);
+                removeEventListener('pagerendered', pagerenderedListener);
+              }
+            }, 1000);
+          },
+          { 'once': true }
+        );
+        document.addEventListener('textlayerrendered', textlayerrenderedListener);
+        document.addEventListener('pagerendered', pagerenderedListener);
 
         loadingTask.promise.then(function(pdfDocument) {
           renderStats.textlayerrendered = pdfDocument.numPages;

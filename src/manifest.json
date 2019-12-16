@@ -59,11 +59,12 @@
     "css": [
       "vendors/pdf.js/build/components/pdf_viewer.css",
       "vendors/only-modal/css/bootstrap.min.css",
+      "vendors/fontawesome/css/all.min.css",
       "content_scripts/GluttonLinkInserter.css",
       "content_scripts/ModalManager.css"
     ]
   }],
   "web_accessible_resources": [
-    "vendors/pdf.js/*"
+    "vendors/*"
   ]
 }
