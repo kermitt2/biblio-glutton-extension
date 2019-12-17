@@ -65,8 +65,12 @@ const modalContent =
       <div id="citeType">
         <input type="radio" name="citeType" id="bibtex" value="bibtex" checked>
         <label for="bibtex">Bibtex</label>
-        <input type="radio" name="citeType" id="ohter" value="ohter">
-        <label for="ohter">Other</label>
+        <input type="radio" name="citeType" id="chicagoa" value="chicagoa">
+        <label for="chicagoa">Chicago A</label>
+        <input type="radio" name="citeType" id="chicagob" value="chicagob">
+        <label for="chicagob">Chicago B</label>
+        <input type="radio" name="citeType" id="apa" value="apa">
+        <label for="apa">APA</label>
       </div>
       <div id="processCite">
         <button class="btn btn-sm btn-light btn-outline-secondary" type="button">
@@ -110,7 +114,7 @@ const modalContent =
 
 let ModalManager = {
   'dataView': {
-    'keys': ['atitle', 'author', 'oaLink', 'istexLink'],
+    'keys': ['atitle', 'author', 'oaLink'],
     'data': {
       'atitle': { 'label': 'Title', 'type': 'text' },
       'author': {
@@ -121,9 +125,14 @@ let ModalManager = {
           else return 'No data available';
         }
       },
-      'istexLink': { 'label': 'ISTEX', 'type': 'href' },
       'oaLink': { 'label': 'Open Access', 'type': 'href' },
       'gluttonId': { 'label': 'GluttonId', 'type': 'text' }
+    }
+  },
+  'init': function(options) {
+    if (options.SHOW_ISTEX) {
+      ModalManager.dataView.keys.push('istexLink');
+      ModalManager.dataView.data.istexLink = { 'label': 'ISTEX', 'type': 'href' };
     }
   },
   // Refresh openUrl button state

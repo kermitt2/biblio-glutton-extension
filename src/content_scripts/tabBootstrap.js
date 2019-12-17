@@ -8,6 +8,7 @@ chrome.storage.local.get(null, function(settings) {
   console.log(settings);
   GluttonLinkInserter.config(settings);
   setTimeout(GluttonLinkInserter.onDOMContentLoaded, 0);
+  ModalManager.init(settings);
   return doTheJob(settings);
 });
 
@@ -137,7 +138,7 @@ function doTheJob(settings) {
       }
       // Get result from background (GROBID referenceAnnotations result)
     } else if (request.message === 'fromBackgroundToContentScript:processPdf') {
-      if (request.data.err) alert('Error : WebExtension did not find direct link to PDF');
+      if (request.data.err) alert('Error : WebExtension did not find direct link of PDF file');
       // if (request.data.err) alert(errorMsg(request.data.res.error));
       GluttonLinkInserter.refbibs.update(request.data.res.refbib.gluttonId, request.data.res.refbib);
       GluttonLinkInserter.refbibs.current = GluttonLinkInserter.refbibs.getData(request.data.res.refbib.gluttonId);
