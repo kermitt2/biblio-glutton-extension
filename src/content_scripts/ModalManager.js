@@ -209,9 +209,7 @@ let ModalManager = {
           'pagesloaded',
           function() {
             let intervalID = window.setInterval(function() {
-              console.log(renderStats);
               if (renderStats.textlayerrendered === 0 && renderStats.pagerendered === 0) {
-                console.log(annotations);
                 clearInterval(intervalID);
                 removeEventListener('textlayerrendered', textlayerrenderedListener);
                 removeEventListener('pagerendered', pagerenderedListener);
@@ -485,18 +483,14 @@ let ModalManager = {
       // this is a reference marker
       // we draw a box
       element.setAttribute('style', attributes + 'border:1px solid; border-color: blue;');
+    }
+    // we need the area where the actual target bibliographical reference is
+    if (theBibPos) {
       // the link here goes to the bibliographical reference
       if (theId) {
         element.onclick = function() {
-          ModalManager.goToByScroll(theId);
+          ModalManager.goToByScroll(theBibPos.p, theId);
         };
-      }
-      // we need the area where the actual target bibliographical reference is
-      if (theBibPos) {
-        element.setAttribute('data-toggle', 'popover');
-        element.setAttribute('data-placement', 'top');
-        element.setAttribute('data-content', 'content');
-        element.setAttribute('data-trigger', 'hover');
         let newWidth = theBibPos.w * scale_x,
           newHeight = theBibPos.h * scale_y,
           newImg = ModalManager.getImagePortion(
@@ -507,12 +501,15 @@ let ModalManager = {
             theBibPos.y * scale_y
           );
         $(element).popover({
+          'toggle': 'popover',
+          'placement': 'top',
+          'trigger': 'hover',
           'content': function() {
-            return '<img src="' + newImg + '" style="width:100%" />';
+            return '<img src="' + newImg + '"/>';
           },
           //return '<img src=\"'+ newImg + '\" />';
           'html': true,
-          'container': '#gluttonPdf'
+          'container': 'body'
           //width: newWidth + 'px',
           //height: newHeight + 'px'
           //          container: canvas,
@@ -530,7 +527,6 @@ let ModalManager = {
     let pageDiv = $('#gluttonPdf .page[data-page-number="' + page + '"]');
     // get the source canvas
     let canvas = pageDiv.find('.canvasWrapper > canvas').get(0);
-    console.log(canvas);
     // the destination canvas
     let tnCanvas = document.createElement('canvas');
     let tnCanvasContext = tnCanvas.getContext('2d');
@@ -539,7 +535,10 @@ let ModalManager = {
     tnCanvasContext.drawImage(canvas, x, y, width, height, 0, 0, width, height);
     return tnCanvas.toDataURL();
   },
-  'goToByScroll': function(id) {
-    $('#gluttonPdf #viewer').animate({ 'scrollTop': $('#' + id).offset().top }, 'fast');
+  'goToByScroll': function(page, id) {
+    $('#gluttonModal').animate(
+      { 'scrollTop': $('.page[data-page-number="' + page + '"').position().top + $('#' + id).position().top },
+      'fast'
+    );
   }
 };

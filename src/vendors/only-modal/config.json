@@ -382,16 +382,26 @@
     "@hr-border": "@gray-lighter"
   },
   "css": [
+    "print.less",
     "buttons.less",
     "close.less",
     "component-animations.less",
     "tooltip.less",
+    "popovers.less",
     "modals.less"
   ],
   "js": [
+    "alert.js",
+    "button.js",
+    "carousel.js",
+    "dropdown.js",
     "modal.js",
     "tooltip.js",
     "popover.js",
+    "tab.js",
+    "affix.js",
+    "collapse.js",
+    "scrollspy.js",
     "transition.js"
   ]
 }
