@@ -82,7 +82,7 @@ function doTheJob(settings) {
     'processHeaderDocument': settings.GROBID_URL + '/processHeaderDocument',
     'referenceAnnotations': settings.GROBID_URL + '/referenceAnnotations',
     'lookup': settings.GLUTTON_URL + '/lookup',
-    'oa/oa_istex': settings.GLUTTON_URL + settings.SHOW_ISTEX ? '/oa_istex' : '/oa'
+    'oa/oa_istex': settings.GLUTTON_URL + (settings.SHOW_ISTEX ? '/oa_istex' : '/oa')
   };
 
   port.postMessage(page);
@@ -113,7 +113,8 @@ function doTheJob(settings) {
               }
             },
             'lookup': {
-              'url': URLS.lookup
+              'url': URLS.lookup,
+              'defaultParams': getLookupDefaultParams(refbib)
             }
           },
           'gluttonId': refbib.gluttonId
@@ -122,12 +123,13 @@ function doTheJob(settings) {
       // Get result from background (GROBID processCitation result)
     } else if (request.message === 'fromBackgroundToContentScript:parseReference') {
       if (request.data.err) {
-        alert(errorMsg(request.data.res.error));
+        if (request.data.res.error.status === 400) alert('Error : There is no data available');
+        else alert(errorMsg(request.data.res.error));
         GluttonLinkInserter.refbibs.stats.fail++;
       } else GluttonLinkInserter.refbibs.stats.success++;
       GluttonLinkInserter.refbibs.stats.count++;
       let refbib = GluttonLinkInserter.refbibs.update(request.data.res.refbib.gluttonId, request.data.res.refbib);
-      if (refbib.target) GluttonLinkInserter.createGluttonLinks(refbib);
+      if (refbib.target) GluttonLinkInserter.createGluttonLinks(refbib, settings.SHOW_ISTEX);
       if (
         typeof GluttonLinkInserter.refbibs.current !== 'undefined' &&
         refbib.gluttonId === GluttonLinkInserter.refbibs.current.gluttonId
@@ -176,7 +178,8 @@ function doTheJob(settings) {
                 }
               },
               'lookup': {
-                'url': URLS.lookup
+                'url': URLS.lookup,
+                'defaultParams': getLookupDefaultParams(refbib)
               }
             },
             'gluttonId': refbib.gluttonId
@@ -206,6 +209,16 @@ function doTheJob(settings) {
       ' : ',
       error.errorThrown !== '' ? error.errorThrown : 'Service not responding'
     ].join('');
+  }
+
+  // get Lookup default params of a refbib
+  function getLookupDefaultParams(refbib) {
+    if (typeof refbib.services === 'undefined') return {};
+    return typeof refbib.services['oa/oa_istex'] !== 'undefined'
+      ? refbib.services['oa/oa_istex'].parameters
+      : typeof refbib.services.lookup !== 'undefined'
+      ? refbib.services.lookup.parameters
+      : {};
   }
 
   // refresh current refbib in Popup

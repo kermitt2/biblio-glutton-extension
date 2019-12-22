@@ -88,7 +88,11 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         // Call Glutton service (lookup)
         return callGluttonService(
           {
-            'url': buildUrl(request.data.services.lookup.url, extractLookupParams(res.refbib.processCitation))
+            'url': buildUrl(
+              request.data.services.lookup.url,
+              extractLookupParams(res.refbib.processCitation),
+              request.data.services.lookup.defaultParams
+            )
           },
           {
             'merge': lookupMerge,
@@ -233,7 +237,12 @@ function callService(SERVICE, options, result, cb) {
     let _res = { 'refbib': {} };
     if (typeof options.service !== 'undefined') {
       _res.refbib.services = {};
-      _res.refbib.services[options.service] = { 'err': err, 'res': sanitizeResultOf(options.service, res) };
+      _res.refbib.services[options.service] = {
+        'url': options.parameters.url,
+        'parameters': getParams(options.parameters.url),
+        'err': err,
+        'res': sanitizeResultOf(options.service, res)
+      };
     }
     if (err) {
       result = $.extend(true, _res, result, { 'error': res });
@@ -318,8 +327,19 @@ function callGrobidService(route, parameters, options, result, cb) {
   );
 }
 
+// Get parameters of a given url
+function getParams(url) {
+  let result = {};
+  if (url.indexOf('?') < 0) return result;
+  const params = new URLSearchParams(url.split('?')[1]);
+  for (let value of params.keys()) {
+    result[value] = params.get(value);
+  }
+  return result;
+}
+
 // Build an URL with parameters
-function buildUrl(baseUrl, parameters) {
+function buildUrl(baseUrl, parameters, defaultParams) {
   let result = baseUrl;
   if (typeof parameters === 'object') {
     let keys = Object.keys(parameters);
@@ -328,6 +348,7 @@ function buildUrl(baseUrl, parameters) {
       if (keys.length > 1) {
         for (let i = 1; i < keys.length; i++) {
           if (parameters[keys[i]]) result += '&' + keys[i] + '=' + parameters[keys[i]];
+          else if (defaultParams[keys[i]]) result += '&' + keys[i] + '=' + defaultParams[keys[i]];
         }
       }
       result += '&sid=glutton-browser-addon';

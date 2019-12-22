@@ -133,19 +133,18 @@ GluttonLinkInserter = {
     if (defaultBtn && typeof refbib.oaLink === 'undefined')
       refbib.buttons.appendChild(GluttonLinkInserter.createLink(refbib.gluttonId));
     // Add Istex Link
-    typeof refbib.oaLink !== 'undefined' &&
+    if (typeof refbib.oaLink !== 'undefined')
       refbib.buttons.appendChild(GluttonLinkInserter.createLink(refbib.gluttonId, refbib.oaLink));
-    typeof refbib.istexLink !== 'undefined' &&
-      show_istex &&
+    if (typeof refbib.istexLink !== 'undefined' && show_istex)
       refbib.buttons.appendChild(GluttonLinkInserter.createLink(refbib.gluttonId, refbib.istexLink, 'istex'));
     // Add Glutton Id
     // refbib.buttons.appendChild(GluttonLinkInserter.createGluttonId(refbib.gluttonId));
     if (typeof refbib.target !== 'undefined') $(refbib.target).append(refbib.buttons);
   },
-  'createGluttonLinks': function(refbib) {
+  'createGluttonLinks': function(refbib, show_istex) {
     var span = document.createElement('span');
     GluttonLinkInserter.refbibs.setValue(refbib.gluttonId, 'buttons', span);
-    GluttonLinkInserter.addButtons(refbib);
+    GluttonLinkInserter.addButtons(refbib, show_istex);
     $(refbib.target).after(span);
   },
   'config': function(settings) {

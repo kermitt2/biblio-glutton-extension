@@ -9,8 +9,9 @@ const CITE = {
     if (typeof refbib === 'undefined' || typeof refbib.publisher === 'undefined') return null;
     let author =
         typeof refbib.author !== 'undefined' && refbib.author.length > 0
-          ? refbib.author[0].family + ',' + refbib.author[0].given
-          : '',
+          ? (refbib.author[0].family ? refbib.author[0].family + ', ' : '') +
+            (refbib.author[0].given ? refbib.author[0].given : '')
+          : 'Author not found',
       booktitle = refbib.title[0] || '',
       month =
         typeof refbib.issued !== 'undefined' && typeof refbib.issued['date-parts'] !== 'undefined'
@@ -83,11 +84,12 @@ const CITE = {
     if (typeof refbib === 'undefined' || typeof refbib.publisher === 'undefined') return null;
     let author =
         typeof refbib.author !== 'undefined' && refbib.author.length > 0
-          ? refbib.author[0].family + ',' + refbib.author[0].given
-          : '',
+          ? (refbib.author[0].family ? refbib.author[0].family + ', ' : '') +
+            (refbib.author[0].given ? refbib.author[0].given : '')
+          : 'Author not found',
       orgName = refbib.orgName,
-      atitle = refbib.processCitation.atitle.text || '',
-      revueName = refbib.processCitation.mtitle.text || '',
+      atitle = refbib.title[0] || refbib.processCitation.atitle.text || '',
+      revueName = refbib.processCitation.mtitle.text || refbib.publisher || '',
       month =
         typeof refbib.issued !== 'undefined' && typeof refbib.issued['date-parts'] !== 'undefined'
           ? refbib.issued['date-parts'][0][1]
@@ -105,8 +107,7 @@ const CITE = {
           '. « ' +
           atitle +
           ' » ' +
-          revueName +
-          ', ' +
+          (revueName ? revueName + ', ' : '') +
           num +
           ' (' +
           year +
@@ -123,11 +124,12 @@ const CITE = {
     if (typeof refbib === 'undefined' || typeof refbib.publisher === 'undefined') return null;
     let author =
         typeof refbib.author !== 'undefined' && refbib.author.length > 0
-          ? refbib.author[0].family + ',' + refbib.author[0].given
-          : '',
+          ? (refbib.author[0].family ? refbib.author[0].family + ', ' : '') +
+            (refbib.author[0].given ? refbib.author[0].given : '')
+          : 'Author not found',
       orgName = refbib.orgName,
-      atitle = refbib.processCitation.atitle.text || '',
-      revueName = refbib.processCitation.mtitle.text || '',
+      atitle = refbib.title[0] || refbib.processCitation.atitle.text || '',
+      revueName = refbib.processCitation.mtitle.text || refbib.publisher || '',
       month =
         typeof refbib.issued !== 'undefined' && typeof refbib.issued['date-parts'] !== 'undefined'
           ? refbib.issued['date-parts'][0][1]
@@ -147,8 +149,7 @@ const CITE = {
           '.« ' +
           atitle +
           ' » ' +
-          revueName +
-          ', ' +
+          (revueName ? revueName + ', ' : '') +
           num +
           ' (' +
           year +
@@ -165,14 +166,16 @@ const CITE = {
     if (typeof refbib === 'undefined' || typeof refbib.publisher === 'undefined') return null;
     let authors =
         typeof refbib.author !== 'undefined' && refbib.author.length > 0
-          ? refbib.author.map(function(author) {
-              return author.family + ',' + author.given + '. ';
-            })
-          : '',
+          ? refbib.author
+              .map(function(author) {
+                return (author.family ? author.family + ', ' : '') + (author.given ? author.given + '. ' : '');
+              })
+              .join('')
+          : 'Authors not found',
       orgName = refbib.orgName,
-      atitle = refbib.processCitation.atitle.text || '',
+      atitle = refbib.title[0] || refbib.processCitation.atitle.text || '',
       jtitle = refbib.processCitation.jtitle.text || '',
-      revueName = refbib.processCitation.mtitle.text || '',
+      revueName = refbib.processCitation.mtitle.text || refbib.publisher || '',
       num = refbib.issue,
       url = typeof refbib.link !== 'undefined' && refbib.link.length > 0 ? refbib.link[0].URL : '',
       pages = refbib.page || '',
@@ -186,10 +189,8 @@ const CITE = {
         year +
         '). ' +
         atitle +
-        '. ' +
-        jtitle +
-        ', ' +
-        revueName +
+        (jtitle ? '. ' + jtitle : '') +
+        (revueName ? ', ' + revueName : '') +
         ', (' +
         num +
         '), ' +

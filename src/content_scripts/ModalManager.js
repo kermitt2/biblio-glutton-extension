@@ -114,14 +114,21 @@ const modalContent =
 
 let ModalManager = {
   'dataView': {
-    'keys': ['atitle', 'author', 'oaLink'],
+    'keys': ['title', 'author', 'publisher', 'oaLink'],
     'data': {
-      'atitle': { 'label': 'Title', 'type': 'text' },
+      'publisher': { 'label': 'Publisher', 'type': 'text' },
+      'title': {
+        'label': 'Title',
+        'type': 'text',
+        'extractData': function(data) {
+          return data[0];
+        }
+      },
       'author': {
         'label': 'First Author',
         'type': 'text',
         'extractData': function(data) {
-          if (data[0]) return [data[0].family, data[0].given].join(', ');
+          if (data[0]) return data[0].family + (data[0].given ? ', ' + data[0].given : '');
           else return 'No data available';
         }
       },
@@ -130,6 +137,7 @@ let ModalManager = {
     }
   },
   'init': function(options) {
+    ModalManager.options = options;
     if (options.SHOW_ISTEX) {
       ModalManager.dataView.keys.push('istexLink');
       ModalManager.dataView.data.istexLink = { 'label': 'ISTEX', 'type': 'href' };
@@ -137,7 +145,14 @@ let ModalManager = {
   },
   // Refresh openUrl button state
   'refreshOpenUrl': function(state) {
-    if (typeof state !== 'undefined') return $('#openUrl > button').attr('disabled', !state);
+    if (typeof state !== 'undefined') {
+      if (state) $('#openUrl').show();
+      else $('#openUrl').hide();
+      return $('#openUrl > button').attr('disabled', !state);
+    } else {
+      $('#openUrl').hide();
+      return $('#openUrl > button').attr('disabled', true);
+    }
   },
 
   // Refresh processPdf button state
@@ -146,8 +161,16 @@ let ModalManager = {
       // Not supported on FF
       $('#processPdf > button').attr('disabled', true);
       return $('#processPdf').hide();
+    } else {
+      if (typeof state !== 'undefined') {
+        if (state) $('#processPdf').show();
+        else $('#processPdf').hide();
+        return $('#processPdf > button').attr('disabled', !state);
+      } else {
+        $('#processPdf').hide();
+        return $('#processPdf > button').attr('disabled', true);
+      }
     }
-    if (typeof state !== 'undefined') return $('#processPdf > button').attr('disabled', !state);
   },
 
   // Refresh refbib cite div
@@ -302,7 +325,7 @@ let ModalManager = {
   },
   'getLink': function(refbib) {
     let link = refbib.oaLink;
-    if (typeof link === 'undefined' || !link) link = refbib.istexLink;
+    if (ModalManager.options.SHOW_ISTEX && (typeof link === 'undefined' || !link)) link = refbib.istexLink;
     return link;
   },
   'show': function() {
@@ -330,6 +353,7 @@ let ModalManager = {
         typeof data.refbib.services.referenceAnnotations !== 'undefined'
           ? data.refbib.services.referenceAnnotations.res
           : undefined;
+
     ModalManager.refreshOpenUrl(oaLink);
     ModalManager.refreshProcessPdfButton(typeof oaLink !== 'undefined');
     ModalManager.setRefbib(refbib);
