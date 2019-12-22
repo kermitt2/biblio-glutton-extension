@@ -51,7 +51,7 @@ const modalContent =
     `
   <div id="modal-refbib">
     <div class="data-row">
-      <div class='modal-subtitle'>About this Reference :</div>
+      <div class='modal-subtitle'>About this Reference:</div>
     </div>
     <div class="data-row">
       <div id="refbib"></div>
@@ -299,6 +299,7 @@ let ModalManager = {
       return $('<a>')
         .addClass(className)
         .attr('href', value)
+        .attr('target', "_blank")
         .text(value);
   },
 
