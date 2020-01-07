@@ -34,7 +34,8 @@ function doTheJob(settings) {
     if (
       typeof GluttonLinkInserter.refbibs.current.services.processPdf === 'undefined' &&
       typeof GluttonLinkInserter.refbibs.current.pdf === 'undefined'
-    )
+    ) {
+      ModalManager.showPdfLoadingLoop();
       return chrome.runtime.sendMessage({
         'message': 'fromContentScriptToBackground:processPdf',
         'data': {
@@ -50,7 +51,7 @@ function doTheJob(settings) {
           'input': GluttonLinkInserter.refbibs.current.oaLink
         }
       });
-    else ModalManager.update(getDataForModal());
+    } else ModalManager.update(getDataForModal());
   });
 
   // Click on openUrl button
@@ -144,6 +145,7 @@ function doTheJob(settings) {
       // if (request.data.err) alert(errorMsg(request.data.res.error));
       GluttonLinkInserter.refbibs.update(request.data.res.refbib.gluttonId, request.data.res.refbib);
       GluttonLinkInserter.refbibs.current = GluttonLinkInserter.refbibs.getData(request.data.res.refbib.gluttonId);
+      ModalManager.hidePdfLoadingLoop();
       ModalManager.update(getDataForModal());
       // Get result from background (lookup & oa/oa_istex result)
     } else if (

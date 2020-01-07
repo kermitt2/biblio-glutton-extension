@@ -12,7 +12,6 @@
   margin-bottom: 25px;
 }
 
-
 #gluttonModal #gluttonPdf {
     background: lightgray;
     padding-right: 15px;
@@ -35,6 +34,10 @@
 #gluttonModal #gluttonPdf .gluttonAnnotations div a {
   position: absolute;
   z-index: 100000;
+}
+
+#gluttonModal #gluttonPdfLoadingLoop {
+  display: none;
 }
 
 #gluttonModal #gluttonModalLabel {

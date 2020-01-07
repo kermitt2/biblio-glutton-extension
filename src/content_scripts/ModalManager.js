@@ -39,6 +39,7 @@ const modalContent =
             <button class="btn btn-sm btn-light btn-outline-secondary" type="button">
               <i class="fas fa-file-upload"></i>
             </button>
+            <img id="gluttonPdfLoadingLoop" src="chrome-extension://oagiliojipalkkpmpllioebdpgekhmlj/vendors/pdf.js/build/components/images/loading-icon.gif" />
           </div>
           <div>
             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
@@ -96,7 +97,6 @@ const modalContent =
     <div class="data-row">
       <div id="gluttonPdf">
         <div id="viewerContainer">
-          <div id="viewer" class="pdfViewer"></div>
         </div>
       </div>
     </div>
@@ -191,6 +191,7 @@ let ModalManager = {
 
   // Refresh refbib cite div
   'refreshRefbibPdf': function(data, annotations) {
+    console.log(data, annotations);
     if (typeof data === 'undefined' || typeof browser !== 'undefined') {
       return $('#modal-pdf').css('display', 'none');
     }
@@ -204,14 +205,21 @@ let ModalManager = {
     }).done(function(blob) {
       return blob.arrayBuffer().then(function(buffer) {
         GluttonLinkInserter.disabled = true; // Disable GluttonLinkInserter
-        let renderStats = { 'textlayerrendered': 0, 'pagerendered': 0, 'tryCount': 0, 'tryMax': 10 };
-        const pdfContainer = $('#gluttonPdf #viewerContainer').get(0);
-        // (Optionally) enable hyperlinks within PDF files.
+        let renderStats = {
+          'hasStarted': false,
+          'textlayerrendered': 0,
+          'pagerendered': 0,
+          'tryCount': 0,
+          'tryMax': 10
+        };
+        const pdfContainer = $('#gluttonPdf #viewerContainer');
+        pdfContainer.empty().append('<div id="viewer" class="pdfViewer"></div>');
         let pdfLinkService = new pdfjsViewer.PDFLinkService();
         let pdfViewer = new pdfjsViewer.PDFViewer({
-          'container': pdfContainer,
+          'container': pdfContainer.get(0),
           'linkService': pdfLinkService
         });
+        // (Optionally) enable hyperlinks within PDF files.
         pdfLinkService.setViewer(pdfViewer);
         // Loading document.
         let loadingTask = pdfjsLib.getDocument({
@@ -231,6 +239,8 @@ let ModalManager = {
         document.addEventListener(
           'pagesloaded',
           function() {
+            console.log('pagesloaded');
+            renderStats.hasStarted = true;
             let intervalID = window.setInterval(function() {
               if (renderStats.textlayerrendered === 0 && renderStats.pagerendered === 0) {
                 clearInterval(intervalID);
@@ -253,13 +263,28 @@ let ModalManager = {
         document.addEventListener('pagerendered', pagerenderedListener);
 
         loadingTask.promise.then(function(pdfDocument) {
+          console.log(pdfDocument);
           renderStats.textlayerrendered = pdfDocument.numPages;
           renderStats.pagerendered = pdfDocument.numPages;
           // Document loaded, specifying document for the viewer and
           // the (optional) linkService.
           pdfViewer.setDocument(pdfDocument);
-
           pdfLinkService.setDocument(pdfDocument, null);
+          // check if rendering has started, else try to render one more time
+          window.setTimeout(function() {
+            if (!renderStats.hasStarted) {
+              renderStats.textlayerrendered = pdfDocument.numPages;
+              renderStats.pagerendered = pdfDocument.numPages;
+              // Document loaded, specifying document for the viewer and
+              // the (optional) linkService.
+              pdfViewer.setDocument(pdfDocument);
+              pdfLinkService.setDocument(pdfDocument, null);
+              window.setTimeout(function() {
+                if (!renderStats.hasStarted)
+                  pdfContainer.empty().append('<div id="viewer" class="pdfViewer">PDF Wiewer not working.</div>');
+              }, 2000);
+            }
+          }, 2000);
         });
       });
     });
@@ -299,7 +324,7 @@ let ModalManager = {
       return $('<a>')
         .addClass(className)
         .attr('href', value)
-        .attr('target', "_blank")
+        .attr('target', '_blank')
         .text(value);
   },
 
@@ -380,6 +405,12 @@ let ModalManager = {
   },
   'insertModal': function() {
     $('body').append(ModalManager.getElement());
+  },
+  'showPdfLoadingLoop': function() {
+    return $('#gluttonPdfLoadingLoop').show();
+  },
+  'hidePdfLoadingLoop': function() {
+    return $('#gluttonPdfLoadingLoop').hide();
   },
   'setupAnnotations': function(data) {
     // we must check/wait that the corresponding PDF page is rendered at this point
