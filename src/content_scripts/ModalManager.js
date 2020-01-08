@@ -97,7 +97,9 @@ const modalContent =
             <button class="btn btn-sm btn-light btn-outline-secondary" type="button">
               <i class="fas fa-file-upload"></i>
             </button>
-            <img id="gluttonPdfLoadingLoop" src="chrome-extension://oagiliojipalkkpmpllioebdpgekhmlj/vendors/pdf.js/build/components/images/loading-icon.gif" />
+            <img id="gluttonPdfLoadingLoop" src="` +
+    getWebExtensionURL('vendors/pdf.js/build/components/images/loading-icon.gif') +
+    `" />
           </div>
           <div>
             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
@@ -215,19 +217,13 @@ let ModalManager = {
 
   // Refresh processPdf button state
   'refreshProcessPdfButton': function(state) {
-    if (typeof browser !== 'undefined') {
-      // Not supported on FF
-      $('#processPdf > button').attr('disabled', true);
-      return $('#processPdf').hide();
+    if (typeof state !== 'undefined') {
+      if (state) $('#processPdf').show();
+      else $('#processPdf').hide();
+      return $('#processPdf > button').attr('disabled', !state);
     } else {
-      if (typeof state !== 'undefined') {
-        if (state) $('#processPdf').show();
-        else $('#processPdf').hide();
-        return $('#processPdf > button').attr('disabled', !state);
-      } else {
-        $('#processPdf').hide();
-        return $('#processPdf > button').attr('disabled', true);
-      }
+      $('#processPdf').hide();
+      return $('#processPdf > button').attr('disabled', true);
     }
   },
 
@@ -249,7 +245,7 @@ let ModalManager = {
 
   // Refresh refbib cite div
   'refreshRefbibPdf': function(data, annotations) {
-    if (typeof data === 'undefined' || typeof browser !== 'undefined') {
+    if (typeof data === 'undefined') {
       return $('#modal-pdf').css('display', 'none');
     }
     $('#modal-pdf').css('display', 'block');
@@ -579,7 +575,6 @@ let ModalManager = {
   },
   /* croping an area from a canvas */
   'getImagePortion': function(page, width, height, x, y) {
-    console.log('page: ' + page + ', width: ' + width + ', height: ' + height + ', x: ' + x + ', y: ' + y);
     // get the page div
     let pageDiv = $('#gluttonPdf .page[data-page-number="' + page + '"]');
     // get the source canvas
