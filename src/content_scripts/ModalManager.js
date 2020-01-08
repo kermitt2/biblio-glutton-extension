@@ -7,12 +7,9 @@ const getWebExtensionURL = function(url) {
   return typeof browser !== 'undefined' ? browser.runtime.getURL(url) : chrome.runtime.getURL(url);
 };
 
-let workerSrcPath = getWebExtensionURL('vendors/pdf.js/build/generic/build/pdf.worker.js');
+let workerSrcPath = getWebExtensionURL('vendors/pdf.js/build/pdf.worker.js');
 
-if (
-  typeof pdfjsLib === 'undefined' ||
-  (!pdfjsLib && (!pdfjsLib.getDocument || !pdfjsViewer.PDFViewer || !pdfjsViewer.PDFLinkService))
-) {
+if (typeof pdfjsLib === 'undefined' || (!pdfjsLib && !pdfjsLib.getDocument)) {
   console.error('Please build the pdfjs-dist library using\n' + '  `gulp dist-install`');
 }
 // The workerSrc property shall be specified.
@@ -22,7 +19,68 @@ else pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrcPath;
 // Some PDFs need external cmaps.
 //
 const CMAP_URL = getWebExtensionURL('vendors/pdf.js/build/generic/web/cmaps/'),
-  CMAP_PACKED = true;
+  CMAP_PACKED = true,
+  VIEWPORT_SCALE = 1.33,
+  pdf_viewer = {
+    'createEmptyPage': function(num, width, height) {
+      let page = document.createElement('div'),
+        canvas = document.createElement('canvas'),
+        wrapper = document.createElement('div'),
+        textLayer = document.createElement('div');
+
+      page.className = 'page';
+      wrapper.className = 'canvasWrapper';
+      textLayer.className = 'textLayer';
+
+      page.setAttribute('data-loaded', 'false');
+      page.setAttribute('data-page-number', num);
+
+      canvas.width = width;
+      canvas.height = height;
+      page.style.width = `${width}px`;
+      page.style.height = `${height}px`;
+      wrapper.style.width = `${width}px`;
+      wrapper.style.height = `${height}px`;
+      textLayer.style.width = `${width}px`;
+      textLayer.style.height = `${height}px`;
+
+      canvas.setAttribute('id', `page${num}`);
+
+      page.appendChild(wrapper);
+      page.appendChild(textLayer);
+      wrapper.appendChild(canvas);
+
+      return page;
+    },
+    'loadPage': function(viewer, numPage, pdfPage, callback) {
+      let viewport = pdfPage.getViewport({ 'scale': VIEWPORT_SCALE }),
+        page = pdf_viewer.createEmptyPage(numPage, viewport.width, viewport.height),
+        canvas = page.querySelector('canvas'),
+        wrapper = page.querySelector('.canvasWrapper'),
+        container = page.querySelector('.textLayer'),
+        canvasContext = canvas.getContext('2d');
+
+      viewer.appendChild(page);
+
+      pdfPage
+        .render({
+          'canvasContext': canvasContext,
+          'viewport': viewport
+        })
+        .promise.then(function() {
+          return pdfPage.getTextContent().then(function(textContent) {
+            pdfjsLib.renderTextLayer({
+              textContent,
+              container,
+              viewport,
+              textDivs: []
+            });
+            page.setAttribute('data-loaded', 'true');
+            return callback(pdfPage);
+          });
+        });
+    }
+  };
 
 const modalContent =
     `<div class="modal-dialog" role="document">
@@ -191,7 +249,6 @@ let ModalManager = {
 
   // Refresh refbib cite div
   'refreshRefbibPdf': function(data, annotations) {
-    console.log(data, annotations);
     if (typeof data === 'undefined' || typeof browser !== 'undefined') {
       return $('#modal-pdf').css('display', 'none');
     }
@@ -205,22 +262,12 @@ let ModalManager = {
     }).done(function(blob) {
       return blob.arrayBuffer().then(function(buffer) {
         GluttonLinkInserter.disabled = true; // Disable GluttonLinkInserter
-        let renderStats = {
-          'hasStarted': false,
-          'textlayerrendered': 0,
-          'pagerendered': 0,
-          'tryCount': 0,
-          'tryMax': 10
-        };
+
         const pdfContainer = $('#gluttonPdf #viewerContainer');
         pdfContainer.empty().append('<div id="viewer" class="pdfViewer"></div>');
-        let pdfLinkService = new pdfjsViewer.PDFLinkService();
-        let pdfViewer = new pdfjsViewer.PDFViewer({
-          'container': pdfContainer.get(0),
-          'linkService': pdfLinkService
-        });
-        // (Optionally) enable hyperlinks within PDF files.
-        pdfLinkService.setViewer(pdfViewer);
+
+        let viewer = document.getElementById('viewer');
+
         // Loading document.
         let loadingTask = pdfjsLib.getDocument({
           'data': buffer,
@@ -228,63 +275,17 @@ let ModalManager = {
           'cMapPacked': CMAP_PACKED
         });
 
-        let textlayerrenderedListener = function(e) {
-            renderStats.textlayerrendered -= 1;
-          },
-          pagerenderedListener = function(e) {
-            renderStats.pagerendered -= 1;
-          };
-
-        // Check if all pages/layers are rendered & then add annotations
-        document.addEventListener(
-          'pagesloaded',
-          function() {
-            console.log('pagesloaded');
-            renderStats.hasStarted = true;
-            let intervalID = window.setInterval(function() {
-              if (renderStats.textlayerrendered === 0 && renderStats.pagerendered === 0) {
-                clearInterval(intervalID);
-                removeEventListener('textlayerrendered', textlayerrenderedListener);
-                removeEventListener('pagerendered', pagerenderedListener);
-                ModalManager.setupAnnotations(annotations);
-                GluttonLinkInserter.disabled = false; // Disable GluttonLinkInserter
-              }
-              renderStats.tryCount++;
-              if (renderStats.tryCount > renderStats.tryMax) {
-                clearInterval(intervalID);
-                removeEventListener('textlayerrendered', textlayerrenderedListener);
-                removeEventListener('pagerendered', pagerenderedListener);
-              }
-            }, 1000);
-          },
-          { 'once': true }
-        );
-        document.addEventListener('textlayerrendered', textlayerrenderedListener);
-        document.addEventListener('pagerendered', pagerenderedListener);
-
         loadingTask.promise.then(function(pdfDocument) {
-          console.log(pdfDocument);
-          renderStats.textlayerrendered = pdfDocument.numPages;
-          renderStats.pagerendered = pdfDocument.numPages;
-          // Document loaded, specifying document for the viewer and
-          // the (optional) linkService.
-          pdfViewer.setDocument(pdfDocument);
-          pdfLinkService.setDocument(pdfDocument, null);
-          // check if rendering has started, else try to render one more time
-          window.setTimeout(function() {
-            if (!renderStats.hasStarted) {
-              renderStats.textlayerrendered = pdfDocument.numPages;
-              renderStats.pagerendered = pdfDocument.numPages;
-              // Document loaded, specifying document for the viewer and
-              // the (optional) linkService.
-              pdfViewer.setDocument(pdfDocument);
-              pdfLinkService.setDocument(pdfDocument, null);
-              window.setTimeout(function() {
-                if (!renderStats.hasStarted)
-                  pdfContainer.empty().append('<div id="viewer" class="pdfViewer">PDF Wiewer not working.</div>');
-              }, 2000);
-            }
-          }, 2000);
+          let pageRendered = 0;
+          for (let i = 0; i < pdfDocument.numPages; i++) {
+            let numPage = i + 1;
+            pdfDocument.getPage(numPage).then(function(pdfPage) {
+              pdf_viewer.loadPage(viewer, numPage, pdfPage, function(page) {
+                pageRendered++;
+                if (pageRendered >= pdfDocument.numPages) ModalManager.setupAnnotations(annotations);
+              });
+            });
+          }
         });
       });
     });
@@ -492,10 +493,10 @@ let ModalManager = {
   },
   'annotateBib': function(bib, theId, thePos, url, page_height, page_width, theBibPos) {
     let page = thePos.p,
-      pageDiv = $('#gluttonPdf .page[data-page-number="' + page + '"] .canvasWrapper'),
+      canvas = $('#gluttonPdf .page[data-page-number="' + page + '"] .canvasWrapper > canvas'),
       annotationsContainer = $('#gluttonPdf .page[data-page-number="' + page + '"] .gluttonAnnotations div'),
-      canvasHeight = pageDiv.height(),
-      canvasWidth = pageDiv.width(),
+      canvasHeight = canvas.height(),
+      canvasWidth = canvas.width(),
       scale_x = canvasHeight / page_height,
       scale_y = canvasWidth / page_width,
       x = thePos.x * scale_x,
@@ -561,7 +562,7 @@ let ModalManager = {
           'placement': 'top',
           'trigger': 'hover',
           'content': function() {
-            return '<img src="' + newImg + '"/>';
+            return '<img src="' + newImg + '" />';
           },
           //return '<img src=\"'+ newImg + '\" />';
           'html': true,
@@ -578,7 +579,7 @@ let ModalManager = {
   },
   /* croping an area from a canvas */
   'getImagePortion': function(page, width, height, x, y) {
-    //console.log("page: " + page + ", width: " + width + ", height: " + height + ", x: " + x + ", y: " + y);
+    console.log('page: ' + page + ', width: ' + width + ', height: ' + height + ', x: ' + x + ', y: ' + y);
     // get the page div
     let pageDiv = $('#gluttonPdf .page[data-page-number="' + page + '"]');
     // get the source canvas
