@@ -69,6 +69,8 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     request.message === 'fromContentScriptToBackground:openTab'
   ) {
     return chrome.tabs.create({ 'url': request.data.url });
+  } else if (request.message === 'fromGluttonLinkInserterToBackground:cite') {
+    return chrome.tabs.sendMessage(sender.tab.id, { 'message': 'fromBackgroundToContentScript:cite' });
   } else if (request.message === 'fromContentScriptToBackground:parseReference') {
     let response = buildResponse(request.message),
       result = { 'refbib': { 'gluttonId': request.data.gluttonId } };

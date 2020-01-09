@@ -159,7 +159,10 @@ function doTheJob(settings) {
         refbib = GluttonLinkInserter.refbibs(request.data.res.refbib.gluttonId);
       GluttonLinkInserter.refbibs.update(refbib.gluttonId, request.data.res.refbib);
       // Cite
-    } else if (request.message === 'fromContextMenusToContentScript:cite') {
+    } else if (
+      request.message === 'fromContextMenusToContentScript:cite' ||
+      request.message === 'fromBackgroundToContentScript:cite'
+    ) {
       if (typeof GluttonLinkInserter.refbibs.current === 'undefined')
         return alert('Cite only available on glutton links');
       if (

@@ -56,9 +56,9 @@
       "content_scripts/tabBootstrap.js"
     ],
     "css": [
-      "vendors/pdf.js/build/components/pdf_viewer.css",
-      "vendors/only-modal/css/bootstrap.min.css",
       "vendors/fontawesome/css/all.min.css",
+      "vendors/only-modal/css/bootstrap-custom.css",
+      "vendors/pdf.js/build/components/pdf_viewer.css",
       "content_scripts/GluttonLinkInserter.css",
       "content_scripts/ModalManager.css"
     ]

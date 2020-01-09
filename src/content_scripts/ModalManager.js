@@ -102,7 +102,7 @@ const modalContent =
     `" />
           </div>
           <div>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <button type="button" class="btn btn-sm btn-light btn-outline-secondary close" data-dismiss="modal" aria-label="Close">
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
@@ -163,7 +163,7 @@ const modalContent =
   </div>` +
     `</div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-sm btn-light btn-outline-secondary" data-dismiss="modal">Close</button>
       </div>
     </div>
   </div>`,
@@ -252,11 +252,14 @@ let ModalManager = {
     return $.ajax({
       'method': 'GET',
       'url': data,
-      'xhrFields': {
-        'responseType': 'blob'
+      'dataType': false,
+      'xhr': function() {
+        var myXhr = $.ajaxSettings.xhr();
+        myXhr.responseType = 'arraybuffer';
+        return myXhr;
       }
-    }).done(function(blob) {
-      return blob.arrayBuffer().then(function(buffer) {
+    })
+      .done(function(buffer) {
         GluttonLinkInserter.disabled = true; // Disable GluttonLinkInserter
 
         const pdfContainer = $('#gluttonPdf #viewerContainer');
@@ -283,8 +286,11 @@ let ModalManager = {
             });
           }
         });
+      })
+      .fail(function() {
+        const pdfContainer = $('#gluttonPdf #viewerContainer');
+        pdfContainer.empty().append('<div>An error has occurred while PDF processing</div>');
       });
-    });
   },
 
   // Set refbib values into modal HTML
@@ -380,7 +386,7 @@ let ModalManager = {
     ModalManager.refreshOpenUrl(oaLink);
     ModalManager.refreshProcessPdfButton(typeof oaLink !== 'undefined');
     ModalManager.setRefbib(refbib);
-    ModalManager.refreshRefbibCite(refbib && refbib.publisher);
+    ModalManager.refreshRefbibCite(refbib);
     ModalManager.refreshRefbibPdf(pdf, annotations);
   },
   'openUrl': function(cb) {
@@ -562,7 +568,7 @@ let ModalManager = {
           },
           //return '<img src=\"'+ newImg + '\" />';
           'html': true,
-          'container': 'body'
+          'container': '#gluttonModal'
           //width: newWidth + 'px',
           //height: newHeight + 'px'
           //          container: canvas,

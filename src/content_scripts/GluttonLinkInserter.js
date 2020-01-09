@@ -145,7 +145,7 @@ GluttonLinkInserter = {
     var span = document.createElement('span');
     GluttonLinkInserter.refbibs.setValue(refbib.gluttonId, 'buttons', span);
     GluttonLinkInserter.addButtons(refbib, show_istex);
-    $(refbib.target).after(span);
+    $(refbib.target).append(span);
   },
   'config': function(settings) {
     // OpenURL static info
@@ -630,6 +630,10 @@ GluttonLinkInserter = {
         chrome.runtime.sendMessage({
           'message': 'fromGluttonLinkInserterToBackground:openTab',
           'data': { 'url': resourceUrl }
+        });
+      else
+        chrome.runtime.sendMessage({
+          'message': 'fromGluttonLinkInserterToBackground:cite'
         });
     });
     $(a).contextmenu(function(event) {

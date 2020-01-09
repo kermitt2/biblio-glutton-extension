@@ -86,24 +86,196 @@
 }
 
 .data-row .key {
-  vertical-align:middle;
+  vertical-align: middle;
   max-width: 25%;
   display: inline-block;
   margin-right: 2%;
   white-space: nowrap;
-  text-overflow:ellipsis;
+  text-overflow: ellipsis;
   overflow: hidden;
 }
 
 .data-row .value {
   display: inline-block;
-  vertical-align:middle;
+  vertical-align: middle;
   max-width: 70%;
   white-space: nowrap;
-  text-overflow:ellipsis;
+  text-overflow: ellipsis;
   overflow: hidden;
 }
 
-.popover-content img {
+#gluttonModal div.popover-content {
+  display: block;
+  position: static;
+  width: auto;
+  max-width: auto;
+  right: auto;
+  bottom: auto;
+  margin: 0;
+}
+
+#gluttonModal div.popover-content:before {
+  display: none;
+}
+#gluttonModal div.popover-content:after {
+  display: none;
+}
+
+#gluttonModal div.popover-content img {
   max-width: 100%;
+  min-width: 100%;
+  max-height: 100%;
+  min-height: 100%;
+  padding: 5px;
+}
+
+#gluttonModal.modal.fade {
+  overflow-y: scroll;
+  line-height: 1.42857;
+  font-family: sans-serif;
+  font-size: 14px !important;
+}
+
+#gluttonModal button {
+  align-items: flex-start;
+  background-color: rgb(221, 221, 221);
+  background-image: none;
+  border-bottom-color: rgba(0, 0, 0, 0);
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-image-outset: 0px;
+  border-image-repeat: stretch;
+  border-image-slice: 100%;
+  border-image-source: none;
+  border-image-width: 1;
+  border-left-color: rgba(0, 0, 0, 0);
+  border-left-style: solid;
+  border-left-width: 1px;
+  border-right-color: rgba(0, 0, 0, 0);
+  border-right-style: solid;
+  border-right-width: 1px;
+  border-top-color: rgba(0, 0, 0, 0);
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  box-sizing: border-box;
+  color: rgb(51, 51, 51);
+  cursor: pointer;
+  display: inline-block;
+  font-family: sans-serif;
+  font-stretch: 100%;
+  font-style: normal;
+  font-variant-caps: normal;
+  font-variant-east-asian: normal;
+  font-variant-ligatures: normal;
+  font-variant-numeric: normal;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 20px;
+  margin-bottom: 0px;
+  margin-left: 0px;
+  margin-right: 0px;
+  margin-top: 0px;
+  overflow-x: visible;
+  overflow-y: visible;
+  padding-bottom: 6px;
+  padding-left: 12px;
+  padding-right: 12px;
+  padding-top: 6px;
+  text-align: center;
+  text-indent: 0px;
+  text-rendering: auto;
+  text-shadow: none;
+  text-size-adjust: 100%;
+  text-transform: none;
+  touch-action: manipulation;
+  user-select: none;
+  vertical-align: middle;
+  white-space: nowrap;
+  word-spacing: 0px;
+  writing-mode: horizontal-tb;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  -webkit-border-image: none;
+}
+
+#gluttonModal #citeType input[type="radio"] {
+  background-color: rgba(0, 0, 0, 0);
+  border-bottom-color: rgb(51, 51, 51);
+  border-bottom-style: none;
+  border-bottom-width: 0px;
+  border-image-outset: 0px;
+  border-image-repeat: stretch;
+  border-image-slice: 100%;
+  border-image-source: none;
+  border-image-width: 1;
+  border-left-color: rgb(51, 51, 51);
+  border-left-style: none;
+  border-left-width: 0px;
+  border-right-color: rgb(51, 51, 51);
+  border-right-style: none;
+  border-right-width: 0px;
+  border-top-color: rgb(51, 51, 51);
+  border-top-style: none;
+  border-top-width: 0px;
+  box-sizing: border-box;
+  color: rgb(51, 51, 51);
+  cursor: default;
+  direction: ltr;
+  display: inline-block;
+  font-family: sans-serif;
+  font-size: 14px;
+  font-stretch: 100%;
+  font-style: normal;
+  font-variant-caps: normal;
+  font-variant-east-asian: normal;
+  font-variant-ligatures: normal;
+  font-variant-numeric: normal;
+  font-weight: 400;
+  height: 13px;
+  letter-spacing: normal;
+  line-height: 20px;
+  margin-bottom: 0px;
+  margin-left: 0px;
+  margin-right: 0px;
+  margin-top: 0px;
+  padding-bottom: 0px;
+  padding-left: 0px;
+  padding-right: 0px;
+  padding-top: 0px;
+  text-align: start;
+  text-indent: 0px;
+  text-rendering: auto;
+  text-shadow: none;
+  text-size-adjust: 100%;
+  text-transform: none;
+  vertical-align: middle;
+  width: 13px;
+  word-spacing: 0px;
+  writing-mode: horizontal-tb;
+  -webkit-appearance: radio;
+  -webkit-rtl-ordering: logical;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  -webkit-border-image: none;
+}
+
+#gluttonModal #citeType label {
+  box-sizing: border-box;
+  color: rgb(51, 51, 51);
+  cursor: default;
+  display: inline-block;
+  font-family: sans-serif;
+  font-size: 14px;
+  height: 19px;
+  line-height: 20px;
+  margin-bottom: 0px;
+  margin-left: 0px;
+  margin-right: 0px;
+  margin-top: 0px;
+  text-size-adjust: 100%;
+  vertical-align: middle;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
