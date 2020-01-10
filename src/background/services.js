@@ -33,9 +33,9 @@ SERVICES.FILE = {
         return cb(false, { 'blob': res, 'data': URL.createObjectURL(res) });
       })
       .fail(function(jqXHR, textStatus, errorThrown) {
-        if (textStatus === 'timeout' && this.tryCount < this.maxRetry) {
-          this.tryCount++;
-          return $.ajax(this);
+        if (textStatus === 'timeout' && opts.tryCount < opts.maxRetry) {
+          opts.tryCount++;
+          SERVICES.FILE.getPDF(opts, cb);
         } else
           return cb(true, {
             'status': jqXHR.status,
@@ -64,9 +64,9 @@ SERVICES.GROBID = {
         return cb(false, res);
       })
       .fail(function(jqXHR, textStatus, errorThrown) {
-        if (textStatus === 'timeout' && this.tryCount < this.maxRetry) {
-          this.tryCount++;
-          $.ajax(this);
+        if (textStatus === 'timeout' && opts.tryCount < opts.maxRetry) {
+          opts.tryCount++;
+          SERVICES.GROBID.call(opts, cb);
         } else
           return cb(true, {
             'status': jqXHR.status,
@@ -92,8 +92,10 @@ SERVICES.GROBID = {
   'referenceAnnotations': function(options, cb) {
     let formData = new FormData();
     formData.append('input', options.input);
+    formData.append('consolidateCitations', 1);
     return SERVICES.GROBID.call(
       {
+        'timeout': 30000,
         'url': options.url,
         'dataType': 'json',
         'data': formData,
@@ -141,9 +143,9 @@ SERVICES.GLUTTON = {
         return cb(false, data);
       })
       .fail(function(jqXHR, textStatus, errorThrown) {
-        if (textStatus === 'timeout' && this.tryCount < this.maxRetry) {
-          this.tryCount++;
-          return $.ajax(this);
+        if (textStatus === 'timeout' && opts.tryCount < opts.maxRetry) {
+          opts.tryCount++;
+          SERVICES.GLUTTON.call(opts, cb);
         } else
           return cb(true, {
             'status': jqXHR.status,
