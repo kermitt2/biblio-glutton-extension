@@ -46,11 +46,6 @@ const modalContent =
         <input type="radio" name="citeType" id="apa" value="apa">
         <label for="apa">APA</label>
       </div>
-      <div id="processCite">
-        <button class="btn btn-sm btn-light btn-outline-secondary" type="button">
-          <i class="fas fa-quote-right"></i>
-        </button>
-      </div>
       <div id="processCopy">
         <button class="btn btn-sm btn-light btn-outline-secondary" type="button">
           <i class="fas fa-copy"></i>
@@ -134,14 +129,11 @@ let ModalManager = {
     $('#citeString > textearea').text('');
     if (typeof state !== 'undefined' && state) {
       $('#modal-cite').show();
-      $('#processCite').show();
     } else {
       $('#modal-cite').hide();
-      $('#processCite').hide();
     }
     if (typeof state !== 'undefined') {
-      $('#processCopy > button').attr('disabled', true);
-      return $('#processCite > button').attr('disabled', !state);
+      return $('#processCopy > button').attr('disabled', true);
     }
   },
 
@@ -239,12 +231,10 @@ let ModalManager = {
     ModalManager.refreshProcessPdfButton(typeof oaLink !== 'undefined');
     ModalManager.setRefbib(refbib);
     ModalManager.refreshRefbibCite(refbib);
+    ModalManager.refreshCite();
   },
   'openUrl': function(cb) {
     return $('#openUrl').click(cb);
-  },
-  'processCite': function(cb) {
-    return $('#processCite').click(cb);
   },
   'processCopy': function(cb) {
     return $('#processCopy').click(cb);
@@ -256,6 +246,11 @@ let ModalManager = {
   },
   'insertModal': function() {
     $('body').append(ModalManager.getElement());
+    return $('#citeType').click(ModalManager.refreshCite);
+  },
+  'refreshCite': function() {
+    let citeType = ModalManager.getCiteType();
+    return ModalManager.buildCite(citeType, GluttonLinkInserter.refbibs.current);
   },
   'showPdfLoadingLoop': function() {
     return $('body').css('cursor', 'progress');

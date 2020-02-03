@@ -47,12 +47,6 @@ function doTheJob(settings) {
     });
   });
 
-  // Click on cite button
-  ModalManager.processCite(function() {
-    let citeType = ModalManager.getCiteType();
-    return ModalManager.buildCite(citeType, GluttonLinkInserter.refbibs.current);
-  });
-
   // Click on copy button
   ModalManager.processCopy(function() {
     return ModalManager.copyClipboard();
