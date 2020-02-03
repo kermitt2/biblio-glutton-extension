@@ -15,6 +15,16 @@ chrome.storage.local.get(null, function(settings) {
 function doTheJob(settings) {
   console.log(window.document.contentType);
 
+  let current_url = new URL(window.location.href);
+  if (current_url.href.indexOf(DEFAULT_OPTIONS.DISPLAY_PDF_URL) > -1) {
+    PdfManager.init();
+    let annotations = current_url.searchParams.get('annotations'),
+      pdf = current_url.searchParams.get('pdf');
+    if (!pdf) return alert('PDF not found');
+    if (!annotations) return alert('Annotations not found');
+    PdfManager.refreshPdf(pdf, annotations);
+  }
+
   // Set undefined to ignore right clic on non Glutton link
   $('a:not([name="GluttonLink"]').contextmenu(function() {
     GluttonLinkInserter.refbibs.current = undefined;
@@ -28,31 +38,6 @@ function doTheJob(settings) {
   });
 
   ModalManager.insertModal();
-
-  // Click on processPdf button
-  ModalManager.processPdf(function() {
-    if (
-      typeof GluttonLinkInserter.refbibs.current.services.processPdf === 'undefined' &&
-      typeof GluttonLinkInserter.refbibs.current.pdf === 'undefined'
-    ) {
-      ModalManager.showPdfLoadingLoop();
-      return chrome.runtime.sendMessage({
-        'message': 'fromContentScriptToBackground:processPdf',
-        'data': {
-          'services': {
-            'processHeaderDocument': {
-              'url': URLS.processHeaderDocument
-            },
-            'referenceAnnotations': {
-              'url': URLS.referenceAnnotations
-            }
-          },
-          'gluttonId': GluttonLinkInserter.refbibs.current.gluttonId,
-          'input': GluttonLinkInserter.refbibs.current.oaLink
-        }
-      });
-    } else ModalManager.update(getDataForModal());
-  });
 
   // Click on openUrl button
   ModalManager.openUrl(function() {
@@ -146,7 +131,11 @@ function doTheJob(settings) {
       GluttonLinkInserter.refbibs.update(request.data.res.refbib.gluttonId, request.data.res.refbib);
       GluttonLinkInserter.refbibs.current = GluttonLinkInserter.refbibs.getData(request.data.res.refbib.gluttonId);
       ModalManager.hidePdfLoadingLoop();
-      ModalManager.update(getDataForModal());
+      if (!request.data.err)
+        return chrome.runtime.sendMessage({
+          'message': 'fromContentScriptToBackground:openPdf',
+          'data': GluttonLinkInserter.refbibs.current
+        });
       // Get result from background (lookup & oa/oa_istex result)
     } else if (
       request.message === 'fromBackgroundToContentScript:lookup' ||
@@ -158,6 +147,38 @@ function doTheJob(settings) {
       let service = request.message.split(':')[1],
         refbib = GluttonLinkInserter.refbibs(request.data.res.refbib.gluttonId);
       GluttonLinkInserter.refbibs.update(refbib.gluttonId, request.data.res.refbib);
+      // Display PDF
+    } else if (
+      request.message === 'fromContextMenusToContentScript:displayPDF' ||
+      request.message === 'fromBackgroundToContentScript:displayPDF'
+    ) {
+      if (typeof GluttonLinkInserter.refbibs.current === 'undefined')
+        return alert('View PDF only available on glutton links');
+      if (
+        typeof GluttonLinkInserter.refbibs.current.services.processPdf === 'undefined' &&
+        typeof GluttonLinkInserter.refbibs.current.pdf === 'undefined'
+      ) {
+        ModalManager.showPdfLoadingLoop();
+        return chrome.runtime.sendMessage({
+          'message': 'fromContentScriptToBackground:processPdf',
+          'data': {
+            'services': {
+              'processHeaderDocument': {
+                'url': URLS.processHeaderDocument
+              },
+              'referenceAnnotations': {
+                'url': URLS.referenceAnnotations
+              }
+            },
+            'gluttonId': GluttonLinkInserter.refbibs.current.gluttonId,
+            'input': GluttonLinkInserter.refbibs.current.oaLink
+          }
+        });
+      } else
+        return chrome.runtime.sendMessage({
+          'message': 'fromContentScriptToBackground:openPdf',
+          'data': GluttonLinkInserter.refbibs.current
+        });
       // Cite
     } else if (
       request.message === 'fromContextMenusToContentScript:cite' ||

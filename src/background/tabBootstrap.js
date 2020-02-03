@@ -34,13 +34,23 @@ chrome.contextMenus.create(
   onCreated
 );
 
+chrome.contextMenus.create(
+  {
+    id: 'displayPDF',
+    title: 'View this paper',
+    contexts: ['link']
+  },
+  onCreated
+);
+
 chrome.contextMenus.onClicked.addListener(function(info, tab) {
   console.log(info, tab);
   if (info.menuItemId === 'parseReference')
     return chrome.tabs.sendMessage(tab.id, { 'message': 'fromContextMenusToContentScript:parseReference' });
-  else if (info.menuItemId === 'cite') {
+  else if (info.menuItemId === 'cite')
     return chrome.tabs.sendMessage(tab.id, { 'message': 'fromContextMenusToContentScript:cite', 'data': info });
-  }
+  else if (info.menuItemId === 'displayPDF')
+    return chrome.tabs.sendMessage(tab.id, { 'message': 'fromContextMenusToContentScript:displayPDF', 'data': info });
 });
 
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
@@ -64,6 +74,12 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
       },
       result
     );
+  } else if (request.message === 'fromContentScriptToBackground:openPdf') {
+    let pdfUrl = request.data.pdf.data,
+      annotationsUrl = request.data.pdf.annotations;
+    return chrome.tabs.create({
+      'url': DEFAULT_OPTIONS.DISPLAY_PDF_URL + '?pdf=' + pdfUrl + '&annotations=' + annotationsUrl
+    });
   } else if (
     request.message === 'fromGluttonLinkInserterToBackground:openTab' ||
     request.message === 'fromContentScriptToBackground:openTab'
@@ -145,8 +161,9 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
               { 'url': request.data.services.referenceAnnotations.url, 'input': blob },
               {
                 'merge': function(result, service) {
-                  let res = { 'refbib': {} };
-                  res.refbib[service] = result;
+                  let res = { 'refbib': { 'pdf': {} } };
+                  res.refbib[service] = result.data;
+                  res.refbib.pdf.annotations = result.url;
                   return res;
                 },
                 'message': response.message,
@@ -164,6 +181,9 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 
 chrome.runtime.onConnect.addListener(function(port) {
   return port.onMessage.addListener(function(page) {
+    console.log(port.sender.url, port.sender.url.indexOf(DEFAULT_OPTIONS.DISPLAY_PDF_URL) > -1);
+    if (port.sender.url.indexOf(DEFAULT_OPTIONS.DISPLAY_PDF_URL) > -1)
+      chrome.tabs.insertCSS(port.sender.tab.id, { 'file': '/vendors/only-modal/css/bootstrap.min.css' });
     if (!isContentTypeAllowed(page.contentType) || !isWhiteListed(port.sender.url)) return;
   });
 });

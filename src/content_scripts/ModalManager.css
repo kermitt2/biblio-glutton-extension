@@ -12,12 +12,12 @@
   margin-bottom: 25px;
 }
 
-#gluttonModal #gluttonPdf {
+#gluttonPdf {
     background: lightgray;
     padding-right: 15px;
 }
 
-#gluttonModal #gluttonPdf .gluttonAnnotations {
+#gluttonPdf .gluttonAnnotations {
   position: absolute;
   left: 0px;
   top: 0px;
@@ -27,13 +27,14 @@
   overflow: hidden;
 }
 
-#gluttonModal #gluttonPdf .gluttonAnnotations div {
+#gluttonPdf .gluttonAnnotations div {
   position: relative;
 }
 
-#gluttonModal #gluttonPdf .gluttonAnnotations div a {
+#gluttonPdf .gluttonAnnotations div a {
+  cursor: pointer;
   position: absolute;
-  z-index: 100000;
+  z-index: 1050;
 }
 
 #gluttonModal #gluttonPdfLoadingLoop {
@@ -104,7 +105,12 @@
   overflow: hidden;
 }
 
-#gluttonModal div.popover-content {
+.popover {
+  width: 400px !important;
+  max-width: 400px !important;
+}
+
+.popover-content {
   display: block;
   position: static;
   width: auto;
@@ -114,14 +120,14 @@
   margin: 0;
 }
 
-#gluttonModal div.popover-content:before {
+.popover-content:before {
   display: none;
 }
-#gluttonModal div.popover-content:after {
+.popover-content:after {
   display: none;
 }
 
-#gluttonModal div.popover-content img {
+.popover-content img {
   max-width: 100%;
   min-width: 100%;
   max-height: 100%;

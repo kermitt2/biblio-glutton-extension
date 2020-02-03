@@ -49,9 +49,11 @@
       "vendors/fontawesome/js/all.js",
       "vendors/pdf.js/build/generic/build/pdf.js",
       "vendors/pdf.js/build/generic/build/pdf.worker.js",
+      "shared/functions.js",
       "shared/default_options.js",
       "content_scripts/cite.js",
       "content_scripts/ModalManager.js",
+      "content_scripts/pdf_display.js",
       "content_scripts/GluttonLinkInserter.js",
       "content_scripts/tabBootstrap.js"
     ],

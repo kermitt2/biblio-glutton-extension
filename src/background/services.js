@@ -84,8 +84,7 @@ SERVICES.GROBID = {
         'data': options.data
       },
       function(err, res) {
-        if (err) return cb(err, res);
-        else return cb(err, res);
+        return cb(err, res);
       }
     );
   },
@@ -104,7 +103,10 @@ SERVICES.GROBID = {
         'processData': false
       },
       function(err, res) {
-        return cb(err, res);
+        let json = JSON.stringify(res),
+          blob = new Blob([json], { type: 'application/json' }),
+          url = URL.createObjectURL(blob);
+        return cb(err, { 'data': res, 'url': url });
       }
     );
   },
@@ -121,8 +123,7 @@ SERVICES.GROBID = {
         'processData': false
       },
       function(err, res) {
-        if (err) return cb(err, res);
-        else return cb(err, res);
+        return cb(err, res);
       }
     );
   }
