@@ -38,9 +38,6 @@ Linking work at item level (e.g. article) and will try to identifying the follow
 
 * Chrome
 
-## How to install
-
-...
 
 ## Developers
 
@@ -50,11 +47,24 @@ npm i
 npm run build
 ```
 
-How to run the web extension in developer mode with firefox (you need to install firefox >= 49):
+How to run the web extension in developer mode in firefox (you need to install firefox >= 49):
 ```
 npm i
-npm run run
+npm run firefox
 ``` 
+
+Developer mode in chromium:
+```
+npm i
+npm run chromium
+``` 
+
+Developer mode in chrome:
+```
+npm i
+npm run chrome
+``` 
+
 
 ## Back end service
 

@@ -11,29 +11,61 @@
   "version": "0.1.0",
   "description": "An add-on for identifying Open Access resources in the browser pages",
   "icons": {
-    "16": "icons/science-miner-16.png",
-    "48": "icons/science-miner-48.png"
+    "32": "icons/logo-32.png",
+    "48": "icons/logo-48.png",
+    "96": "icons/logo-96.png"
   },
   "permissions": [
     "<all_urls>",
     "tabs",
-    "webNavigation"
+    "webNavigation",
+    "storage",
+    "activeTab",
+    "contextMenus",
+    "clipboardWrite"
   ],
+  "browser_action": {
+    "default_icon": "icons/logo-96.png",
+    "default_title": "Science Miner",
+    "default_popup": "popup/popup.html"
+  },
   "background": {
-    "scripts": ["background/postInstall.js", "background/tabBootstrap.js"]
+    "scripts": ["vendors/jquery-3.2.1.js", "shared/default_options.js", "background/services.js", "background/postInstall.js", "background/tabBootstrap.js"],
+    "persistent": false
   },
   "options_ui": {
-    "page": "options/options.html"
+    "page": "options/options.html",
+    "browser_style": true
   },
   "content_scripts": [{
     "matches": [
       "<all_urls>"
     ],
     "js": [
+      "vendors/lz-string.js",
+      "content_scripts/log.js",
+      "vendors/jquery-3.2.1.js",
+      "vendors/only-modal/js/bootstrap.min.js",
+      "vendors/fontawesome/js/all.js",
+      "vendors/pdf.js/build/generic/build/pdf.js",
+      "vendors/pdf.js/build/generic/build/pdf.worker.js",
+      "shared/functions.js",
+      "shared/default_options.js",
+      "content_scripts/cite.js",
+      "content_scripts/ModalManager.js",
+      "content_scripts/pdf_display.js",
+      "content_scripts/GluttonLinkInserter.js",
       "content_scripts/tabBootstrap.js"
     ],
     "css": [
-      "content_scripts/main.css"
+      "vendors/fontawesome/css/all.min.css",
+      "vendors/only-modal/css/bootstrap-custom.css",
+      "vendors/pdf.js/build/components/pdf_viewer.css",
+      "content_scripts/GluttonLinkInserter.css",
+      "content_scripts/ModalManager.css"
     ]
-  }]
+  }],
+  "web_accessible_resources": [
+    "vendors/*"
+  ]
 }

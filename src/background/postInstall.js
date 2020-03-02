@@ -1,12 +1,24 @@
+/*
+ * @prettier
+ */
 'use strict';
 
 function handleInstalled(details) {
-  console.log(details.reason);
   if (details.reason === 'install') {
-    chrome.tabs.create({
-      url: chrome.runtime.getURL('/options/options.html')
+    chrome.storage.local.clear(function() {
+      if (!chrome.runtime.lastError) {
+        return chrome.storage.local.set(DEFAULT_OPTIONS, function() {
+          if (chrome.runtime.lastError) alert('error chrome.storage.local.set', chrome.runtime.lastError);
+        });
+      }
+      if (chrome.runtime.lastError) alert('error chrome.storage.local.get', chrome.runtime.lastError);
     });
   }
+
+  return chrome.runtime.openOptionsPage(function() {
+    if (chrome.runtime.lastError) alert('error chrome.runtime.openOptionsPage', chrome.runtime.lastError);
+    console.log('Options page opened');
+  });
 }
 
 chrome.runtime.onInstalled.addListener(handleInstalled);

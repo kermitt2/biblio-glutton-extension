@@ -1,0 +1,92 @@
+html,
+body {
+  min-width: 400px;
+  background-color: #EEE;
+}
+
+#popup-content {
+  text-align: justify;
+  border-radius: 5px;
+  position: relative;
+  margin: 5px;
+  background-color: white;
+  border: 1px solid #D2DBED;
+  padding: 10px;
+  -webkit-box-shadow: #888 2px 2px 2px;
+}
+
+#popup-header {
+  margin-bottom: 15px;
+  vertical-align: middle;
+}
+
+#popup-header #popup-header-title {
+  font-size: 24px;
+  display: inline-block;
+  text-decoration: underline;
+  margin-bottom: 10px;
+}
+
+#popup-header #settings {
+  float: right;
+  margin-left: 15px;
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+#popup-body {
+  margin-top: 15px;
+  margin-bottom: 15px;
+  vertical-align: middle;
+}
+
+#popup-body #popup-body-title {
+  text-align: center;
+  font-size: 18px;
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
+#popup-body #popup-body-title #refbibs-count {
+  display: inline-block;
+}
+
+#popup-footer {
+  display: none;
+}
+
+#popup-footer #stats {
+  padding-top: 5px;
+  padding-bottom: 5px;
+  border-top: 1px solid black;
+  border-bottom: 1px solid black;
+}
+
+.data-row {
+  display: block;
+  margin-top: 3px;
+  margin-bottom: 3px;
+}
+
+.data-row .key:after {
+  content: " : ";
+}
+
+.data-row .key {
+  vertical-align:middle;
+  max-width: 70%;
+  display: inline-block;
+  margin-right: 2%;
+  white-space: nowrap;
+  text-overflow:ellipsis;
+  overflow: hidden;
+}
+
+.data-row .value {
+  display: inline-block;
+  vertical-align:middle;
+  max-width: 20%;
+  white-space: nowrap;
+  text-overflow:ellipsis;
+  overflow: hidden;
+}

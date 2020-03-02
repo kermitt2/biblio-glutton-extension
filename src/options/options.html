@@ -8,11 +8,30 @@
 
 <body>
   <div id="options">
+
     <h4>biblio-glutton</h4>
-    <p>biblio-glutton is here!</p>
+
+    <div class="options-row" title="Show/Hide Istex buttons (Istex authentication required to work)">
+      <input type="checkbox" id="show-istex" name="show-istex">
+      <label for="show-istex">Show Istex buttons</label>
+    </div>
+
+    <div class="options-row" title="Set GROBID service url">
+      <label for="grobid-url">Set GROBID service url : </label>
+      <input type="text" id="grobid-url" name="grobid-url" value="">
+    </div>
+
+    <div class="options-row" title="Set Glutton service url">
+      <label for="glutton-url">Set Glutton service url : </label>
+      <input type="text" id="glutton-url" name="glutton-url" value="">
+    </div>
+
   </div>
-  <!--script src="options.js"></script-->
+
   <script src="../vendors/jquery-3.2.1.js"></script>
+  <script src="../shared/default_options.js"></script>
+  <script src="options.js"></script>
+
 </body>
 
 </html>
